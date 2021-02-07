@@ -26,11 +26,6 @@ class MathJax {
 	 * @return bool Return true on success.
 	 */
 	public static function setup( Parser $parser ): bool {
-
-		// Find out sequences that seem to be out-of-tag TEX markup like \begin{equation}...\end{equation}:
-		$environments = trim( preg_replace( '/\s*,\s*/s', '|', preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' ) ) );
-		self::$envRegex = '/\\\\begin\\s*\\{(' . $environments . ')\\}(.+?)\\\\end\\s*\\{\1\\}/si';
-
 		// When the parser sees the <math> tag, it executes
 		// the self::renderMath function:
 		global $wgmjMathTag;
@@ -257,6 +252,20 @@ class MathJax {
 	}   // -- public static function processPage( OutputPage &$output, Skin &$skin ): bool
 
 	/**
+	 * Get a regular expression for free TeX environments.
+	 *
+	 * @return string The regular expression.
+	 */
+	private static function envRegex(): string {
+		if ( !self::$envRegex ) {
+			// Find out sequences that seem to be out-of-tag TEX markup like \begin{equation}...\end{equation}:
+			$environments = trim( preg_replace( '/\s*,\s*/s', '|', preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' ) ) );
+			self::$envRegex = '/\\\\begin\\s*\\{(' . $environments . ')\\}(.+?)\\\\end\\s*\\{\1\\}/si';
+		}
+		return self::$envRegex;
+	}
+
+	/**
 	 * Find TeX environments outside <math>:
 	 *
 	 * @param string $text Wikitext to find free TeX environments in.
@@ -266,7 +275,7 @@ class MathJax {
 	private static function sanitizeFreeEnvironments( string $text ): string {
 		// Allow indentation in free equations -- remove all <p> and <pre> tags from within formulae. Also remove <a>:
 		$text = preg_replace_callback(
-			self::$envRegex,
+			self::envRegex(),
 			function ( array $matches ): string {
 				// Set flag: MathJax needed:
 				self::$mathJaxNeeded = true;
