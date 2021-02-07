@@ -211,43 +211,44 @@ class MathJax {
 	 */
 	public static function processPage( OutputPage &$output, Skin &$skin ): bool {
 		$namespace = $output->getTitle()->getNamespace();
-		if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {   // -- not in Special: or Media:
+		$text = $output->mBodytext;
+		if (!$text || $namespace < 0 || $namespace === NS_MEDIAWIKI) {
+			return true;
+		}
 
-			// Screen <textarea>s:
-			$textareas = [];
-			$text = preg_replace_callback(
-				'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)>(.*?)</textarea>%si',
-				function ( array $matches ) use ( &$textareas ): string {
-					$textareas [$matches [2]] = $matches [4];
-					return '<textarea ' . $matches [1] . 'id="' . $matches [2] . '"' . $matches [3] . '></textarea>';
-				},    // -- function ($matches) use ($textareas)
-				$output->mBodytext
-			);    // -- $text = preg_replace_callback (...)
+		// Screen <textarea>s:
+		$textareas = [];
+		$text = preg_replace_callback(
+			'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)>(.*?)</textarea>%si',
+			function ( array $matches ) use ( &$textareas ): string {
+				$textareas [$matches [2]] = $matches [4];
+				return '<textarea ' . $matches [1] . 'id="' . $matches [2] . '"' . $matches [3] . '></textarea>';
+			},    // -- function ($matches) use ($textareas)
+			$text
+		);    // -- $text = preg_replace_callback (...)
 
-			// Process TeX environments outside <math>:
-			$text = self::sanitizeFreeEnvironments( $text );
+		// Process TeX environments outside <math>:
+		$text = self::sanitizeFreeEnvironments( $text );
 
-			// <math> (already processed):
-			global $wgmjMathJax;
-			$inline_regex =	'/' . preg_quote( $wgmjMathJax['tex']['inlineMath'][0][0], '/' )
-						  . '.+?'
-						  . preg_quote( $wgmjMathJax['tex']['inlineMath'][0][1], '/' ) . '/';
-			$display_regex =	'/' . preg_quote( $wgmjMathJax['tex']['displayMath'][0][0], '/' )
-						   . '.+?'
-						   . preg_quote( $wgmjMathJax['tex']['displayMath'][0][1], '/' ) . '/';
-			// Set flag: MathJax needed:
-			self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( $inline_regex, $text ) || preg_match( $display_regex, $text );
+		// <math> (already processed):
+		global $wgmjMathJax;
+		$inline_regex =	'/' . preg_quote( $wgmjMathJax['tex']['inlineMath'][0][0], '/' )
+					  . '.+?'
+					  . preg_quote( $wgmjMathJax['tex']['inlineMath'][0][1], '/' ) . '/';
+		$display_regex =	'/' . preg_quote( $wgmjMathJax['tex']['displayMath'][0][0], '/' )
+					   . '.+?'
+					   . preg_quote( $wgmjMathJax['tex']['displayMath'][0][1], '/' ) . '/';
+		// Set flag: MathJax needed:
+		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( $inline_regex, $text ) || preg_match( $display_regex, $text );
 
-			// Unscreen <textarea>s:
-			$output->mBodytext = preg_replace_callback(
-				'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)></textarea>%si',
-				function ( array $matches ) use ( $textareas ): string {
-					return '<textarea ' . $matches [1] . 'id="' . $matches [2] . '"' . $matches [3] . '>' . $textareas [$matches [2]] . '</textarea>';
-				},    // -- function ($matches) use ($textareas)
-				$text
-			);	// -- $output->mBodytext = preg_replace_callback (...)
-
-		}    // -- if ($namespace >= 0 && $namespace !== NS_MEDIAWIKI)
+		// Unscreen <textarea>s:
+		$output->mBodytext = preg_replace_callback(
+			'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)></textarea>%si',
+			function ( array $matches ) use ( $textareas ): string {
+				return '<textarea ' . $matches [1] . 'id="' . $matches [2] . '"' . $matches [3] . '>' . $textareas [$matches [2]] . '</textarea>';
+			},    // -- function ($matches) use ($textareas)
+			$text
+		);	// -- $output->mBodytext = preg_replace_callback (...)
 
 		// Attach MathJax JavaScript, if necessary:
 		self::attach( $output, $skin);

@@ -8,7 +8,7 @@
 	"type": "parserhook",
 	"version": "1.8",
 	"descriptionmsg": "mathjax-desc",
-	"url": "https://traditio.wiki/MathJax",
+	"url": "https://traditio.wiki/MathJax_for_MediaWiki",
 	"requires": {
 		"MediaWiki": ">= 1.25.0",
 		"platform": {
