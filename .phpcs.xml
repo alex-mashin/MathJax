@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset>
+	<rule ref="./vendor/mediawiki/mediawiki-codesniffer/MediaWiki">
+		<properties>
+			<property name="allowedPrefixes" type="array">
+				<element value="wgmj" />
+				<element value="wg" />
+			</property>
+		</properties>
+		<exclude name="MediaWiki.WhiteSpace.SpaceBeforeSingleLineComment.NewLineComment" />
+	</rule>
+	<file>.</file>
+	<exclude-pattern>vendor</exclude-pattern>
+</ruleset>
