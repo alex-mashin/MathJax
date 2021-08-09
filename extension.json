@@ -124,7 +124,8 @@
 							"TeX": ["application/x-tex"],
 							"OpenMath": ["OpenMath"]
 						}
-					}
+					},
+					"enableEnrichment": true
 				}
 			},
 			"description": "MathJax configuration to be used client-side. Only relevant with $wgmjClientSide = true."

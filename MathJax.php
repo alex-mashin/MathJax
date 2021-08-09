@@ -14,6 +14,7 @@ use function MediaWiki\suppressWarnings;
  * @todo: integration of that analysis with Lua.
  * @todo: integration with SMW: subobjects for formulæ and wikilinks from properties.
  * @todo: access node.js as a service.
+ * @todo: feed to node.js only the needed macro.
  */
 class MathJax {
 
@@ -33,7 +34,7 @@ class MathJax {
 	private static $texConf;
 	/** @var string $mjConf Complete (with macros) configuration for MathJax as JSON. */
 	private static $mjConf;
-	/** @var BagOStuff $cache Parser cache to store the results of TeX to MML conversion/ */
+	/** @var BagOStuff $cache Parser cache to store the results of TeX to MML conversion. */
 	private static $cache;
 
 	/**
@@ -54,7 +55,7 @@ class MathJax {
 		$tag = preg_quote( $wgmjMathTag, '/' );
 		self::$blockRegexes = [
 			// : <math>...</math> -> <math display="block">...</math>.
-			'/\n\s*(?::+\s*)+<' . $tag . '>(.+?)<\/' . $tag . '>[  ]*([.,:;]?)/si'
+			'/(?:^|\n)\s*(?::+\s*)+<' . $tag . '>(.+?)<\/' . $tag . '>[  ]*([.,:;]?)/si'
 			=> "\n<" . $wgmjMathTag . ' display="block">$1$2</' . $wgmjMathTag . '>',
 			// : {{#tag:math|...}} -> {{#tag:math|display="block"|...}}.
 			'/(?:^|\n)\s*(?::+\s*)+{{#tag:' . $tag . '\|(.+?)}}[  ]*([.,:;]?)/si'
@@ -137,6 +138,15 @@ class MathJax {
 	}
 
 	/**
+	 * Escape string for JavaSctipt.
+	 * @param string $text
+	 * @return string
+	 */
+	private static function escape4JS( $text ) {
+		return strtr( html_entity_decode( $text, ENT_NOQUOTES ), [ '\\' => '\\\\', "\n" => '\n', "'" => "\'" ] );
+	}
+
+	/**
 	 * Convert TeX to MML server-side with node.js and MathJax.
 	 * @param string $tex TeX to convert.
 	 * @param bool $block Block display (not inline).
@@ -145,6 +155,7 @@ class MathJax {
 	private static function tex2MMLlocally( string $tex, bool $block ): ?string {
 		$tex_config = self::texConf();
 		// Cache varying on TeX formula, its display mode and current TeX config.
+		$tex = trim( $tex );
 		$key = self::$cache->makeGlobalKey( 'MathJax', 'TeX2MML', $tex, (int)$block, hash( 'fnv1a64', $tex_config ) );
 		$cached = self::$cache->get( $key, BagOStuff::READ_VERIFIED );
 		if ( $cached ) {
@@ -152,7 +163,7 @@ class MathJax {
 		}
 
 		$block_str = $block ? 'true' : 'false';
-		$quoted_tex = strtr( html_entity_decode( $tex, ENT_NOQUOTES ), [ '\\' => '\\\\', "\n" => '\n', "'" => "\'" ] );
+		$quoted_tex = self::escape4JS( $tex );
 		// @todo as service.
 		$node_command = <<<NODE
 let tex_conf = $tex_config;
@@ -167,16 +178,19 @@ require('mathjax-full').init({
     MathJax.tex2mmlPromise('$quoted_tex' || '', {
         display: $block_str,
     }).then(mml => mml.replace (
-		/^<math/, _ => '<math tex="' + '$quoted_tex'.replace(/"/g, '&quot;') + '"'
+		/^<math(.+?)>(.+)<\/math>$/su,
+		'<math$1>\\n<semantics><mrow>$2</mrow>' +
+		'<annotation encoding="application/x-tex">' +
+		'$quoted_tex'.trim().replace(/&/g, '&#38;') +
+		'</annotation>\\n</semantics>\\n</math>'
 	)).then(mml => console.log(mml));
 }).catch(err => console.log(err));
 NODE;
-
 		$cmd = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm -';
 		$descriptorspec = [
-			[ 'pipe', 'r' ], // stdin is a pipe that the child will read from
-			[ 'pipe', 'w' ], // stdout is a pipe that the child will write to
-			[ 'pipe', 'w' ] // stderr to temporary file.
+			[ 'pipe', 'r' ], // stdin is a pipe that the child will read from.
+			[ 'pipe', 'w' ], // stdout is a pipe that the child will write to.
+			[ 'pipe', 'w' ] // stderr is a pipe that the child will write to.
 		];
 		// phpcs:ignore
 		$process = proc_open( $cmd, $descriptorspec, $pipes, __DIR__ );
@@ -252,8 +266,8 @@ NODE;
 				// Form inline TeX surrounded by \(...\) or block TeX surrounded with $$...$$ for MathJax:
 				global $wgmjTeX;
 				$return = $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][0]
-					. $wikified
-					. $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][1];
+						. $wikified
+						. $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][1];
 			}
 		}
 		// Flag: MathJax needed:
@@ -273,13 +287,13 @@ NODE;
 	private static function wikifyTeX( string $tex ): string {
 		// Replace article titles in \href{...} or [[...]] with their canonical URLs, then strip HTML tags:
 		return strip_tags( preg_replace_callback(
-		                   // \href{...}, [[...]]
-			                   [ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
-			                   function ( $matches ): string {
-				                   return self::texHyperlink( $matches[1], $matches[2] );
-			                   },
-			                   $tex
-		                   ) );
+								// \href{...}, [[...]]
+								[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
+								function ( $matches ): string {
+									return self::texHyperlink( $matches[1], $matches[2] );
+								},
+								$tex
+		) );
 	}
 
 	/**
@@ -341,12 +355,12 @@ NODE;
 	 *
 	 * Process environments outside <math> tags, attach MathJax, if needed.
 	 *
-	 * @param OutputPage $output The OutputPage object.
+	 * @param OutputPage &$output The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
 	 * @return bool Return true on success.
 	 */
-	public static function processPage( OutputPage $output, Skin $skin ): bool {
+	public static function processPage( OutputPage &$output, Skin $skin ): bool {
 		$namespace = $output->getTitle()->getNamespace();
 		$text = $output->mBodytext;
 		if ( !$text || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
@@ -395,9 +409,9 @@ NODE;
 		if ( !self::$envRegex ) {
 			// Find out sequences that seem to be out-of-tag TEX markup like \begin{equation}...\end{equation}:
 			$environments = trim( preg_replace(
-				                      '/\s*,\s*/', '|',
-				                      preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' )
-			                      ) );
+				'/\s*,\s*/', '|',
+				preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' )
+			) );
 			self::$envRegex = '/\\\\begin\\s*\\{(' . $environments . ')\\}(.+?)\\\\end\\s*\\{\1\\}/si';
 		}
 		return self::$envRegex;
@@ -432,12 +446,12 @@ NODE;
 	/**
 	 * Attach MathJax scripts if the page contains prepared TeX or MathML.
 	 *
-	 * @param OutputPage $output OutputPage object.
+	 * @param OutputPage &$output OutputPage object.
 	 * @param Skin $skin Skin object.
 	 *
 	 * @return bool Return true on success.
 	 */
-	private static function attach( OutputPage $output, Skin $skin ): bool {
+	private static function attach( OutputPage &$output, Skin $skin ): bool {
 		global $wgmjClientSide;
 		if ( $wgmjClientSide ) {
 			$namespace = $output->getTitle()->getNamespace();
@@ -451,7 +465,7 @@ NODE;
 			if ( $wgmjServerSide ) {
 				$output->addInlineStyle( <<<'STYLE'
 math {font-size: 150%;}
-math>semantics {display:none;}
+math>semantics>annotation {display:none;}
 STYLE );
 			}
 		}
@@ -485,12 +499,12 @@ STYLE );
 	/**
 	 * Configure MathJax and attach MathJax scripts:
 	 *
-	 * @param OutputPage $output The OutputPage object.
+	 * @param OutputPage &$output The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
 	 * @return bool Return true on success.
 	 */
-	private static function attachMathJaxIfNotYet( OutputPage $output, Skin $skin ): bool {
+	private static function attachMathJaxIfNotYet( OutputPage &$output, Skin $skin ): bool {
 		// Prevent multiple attaching:
 		if ( self::$alreadyAttached ) {
 			return true;
@@ -499,13 +513,13 @@ STYLE );
 		global $wgmjServerSide, $wgmjUseCDN, $wgmjCDNDistribution, $wgExtensionAssetsPath, $wgmjLocalDistribution;
 		// Attaching scripts:
 		$jsonConfig = self::mjConf();
-		$output->addScript( "<script>\nwindow.MathJax = $jsonConfig\n</script>" );
+		$output->addInlineScript( "window.MathJax = $jsonConfig;" );
 		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
 		$lang = $skin->getLanguage()->getCode();
-		$output->addScript( '<script id="MathJax-script" async type="text/javascript" src="'
-		                    . ( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
-		                    . "/$script?locale=$lang" . '">'
-		                    . "</script>\n"	);
+		$output->addScriptFile(
+			( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
+			. "/$script?locale=$lang"
+		);
 		self::$alreadyAttached = true;
 		// MathJax configuring and attachment complete.
 		return true;
