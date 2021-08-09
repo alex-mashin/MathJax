@@ -1,5 +1,5 @@
 # MathJax extension for MediaWiki
-Version 1.8.
+Version 2.0.
 
 Alexander Mashin, based on work by Mithgol the Webmaster.
 
@@ -7,7 +7,8 @@ Alexander Mashin, based on work by Mithgol the Webmaster.
 *MathJax* is a *MediaWiki* extension introducing a parser tag `<math>`
 that allows to embed mathematical formulae in _TeX_ or _MML_ into wiki pages.
 
-Formulae are rendered by [MathJax](https://docs.mathjax.org/en/latest/index.html) 3.0 or above.
+Formulae are rendered by [MathJax](https://docs.mathjax.org/en/latest/index.html) 3.0 or above,
+server-side (converted to MathML), client-side (re-rendered and menu added, or both).
 
 Formulae can be wikified:
 - manually, e.g.: `x' = \frac {x-vt} {\sqrt {1 - {v^2} / [[Speed of light|c]] ^ 2}}`,
@@ -36,12 +37,9 @@ The extension requires:
 To install the extension, copy or the entire `MathJax` folder or clone the repository into `(path to mediawiki)/extensions` folder.
 To enable the extension, add `wfLoadExtension( 'MathJax' );` to `LocalSettings.php`.
 
-To use your own copy of _MathJax_, install it: `npm install mathjax@3`.
-This will install MathJax in `node_modules/mathjax` subdirectory of the current directory.
-Make it accessible in the web server configuration
-and set `$wgmjLocalDistribution = '(web path to mathjax)/es5/tex-mml-chtml.js';`.
-
-Otherwise, _MathJax_ will be loaded from CDN.
+If fourmulæ are to be rendered server-side, or MathJax is to be served from your server
+rather that from MathJax CDN, also run `npm install` (requires `node.js`) in `MathJax` folder.
+Make it accessible in the web server configuration. Otherwise, _MathJax_ will be loaded from CDN.
 
 ## Further information
 For further information, see https://traditio.wiki/MathJax_for_MediaWiki.

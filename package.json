@@ -1,0 +1,31 @@
+{
+	"name": "MathJax for MediaWiki",
+	"description": "A MediaWiki extension that renderes formulæ wth MathJax",
+	"version": "2.0",
+	"scripts": {
+		"test": "grunt test"
+	},
+	"dependencies": {
+		"mathjax-full": "^3.2.0",
+		"esm": "^3.2.25"
+	},
+	"devDependencies": {
+		"eslint-config-wikimedia": "0.20.0",
+		"grunt": "1.4.0",
+		"grunt-banana-checker": "0.9.0",
+		"grunt-eslint": "23.0.0",
+		"grunt-stylelint": "0.16.0",
+		"stylelint-config-wikimedia": "0.10.3"
+	},
+	"eslintIgnore": [
+		"vendor/**"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/alex-mashin/MathJax"
+	},
+	"keywords": [
+		"MathJax",
+		"MediaWiki"
+	]
+}
