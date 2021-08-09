@@ -55,20 +55,20 @@ class MathJax {
 		self::$blockRegexes = [
 			// : <math>...</math> -> <math display="block">...</math>.
 			'/\n\s*(?::+\s*)+<' . $tag . '>(.+?)<\/' . $tag . '>[  ]*([.,:;]?)/si'
-				=> "\n<" . $wgmjMathTag . ' display="block">$1$2</' . $wgmjMathTag . '>',
+			=> "\n<" . $wgmjMathTag . ' display="block">$1$2</' . $wgmjMathTag . '>',
 			// : {{#tag:math|...}} -> {{#tag:math|display="block"|...}}.
 			'/(?:^|\n)\s*(?::+\s*)+{{#tag:' . $tag . '\|(.+?)}}[  ]*([.,:;]?)/si'
-				=> "\n{{#tag:" . $wgmjMathTag . '|$1$2|display="block"}}'
+			=> "\n{{#tag:" . $wgmjMathTag . '|$1$2|display="block"}}'
 		];
 		global $wgmjTeX;
 		self::$mathRegex = '/(' . preg_quote( $wgmjTeX['inlineMath'][0][0], '/' )
-								. '.+?'
-								. preg_quote( $wgmjTeX['inlineMath'][0][1], '/' )
-							. '|'
-								. preg_quote( $wgmjTeX['displayMath'][0][0], '/' )
-								. '.+?'
-								. preg_quote( $wgmjTeX['displayMath'][0][1], '/' )
-							. ')/';
+			. '.+?'
+			. preg_quote( $wgmjTeX['inlineMath'][0][1], '/' )
+			. '|'
+			. preg_quote( $wgmjTeX['displayMath'][0][0], '/' )
+			. '.+?'
+			. preg_quote( $wgmjTeX['displayMath'][0][1], '/' )
+			. ')/';
 
 		// Initialise parser cache.
 		global $wgmjServerSide;
@@ -198,8 +198,8 @@ NODE;
 			return $mml;
 		} else {
 			return '<span class="error">'
-				 . wfMessage( 'mathjax-broken-tex', $tex, $error )->inContentLanguage()->text()
-				 . '</span>';
+				. wfMessage( 'mathjax-broken-tex', $tex, $error )->inContentLanguage()->text()
+				. '</span>';
 		}
 	}
 
@@ -273,13 +273,13 @@ NODE;
 	private static function wikifyTeX( string $tex ): string {
 		// Replace article titles in \href{...} or [[...]] with their canonical URLs, then strip HTML tags:
 		return strip_tags( preg_replace_callback(
-			// \href{...}, [[...]]
-			[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
-			function ( $matches ): string {
-				return self::texHyperlink( $matches[1], $matches[2] );
-			},
-			$tex
-		) );
+		                   // \href{...}, [[...]]
+			                   [ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
+			                   function ( $matches ): string {
+				                   return self::texHyperlink( $matches[1], $matches[2] );
+			                   },
+			                   $tex
+		                   ) );
 	}
 
 	/**
@@ -374,8 +374,8 @@ NODE;
 			'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)></textarea>%si',
 			static function ( array $matches ) use ( $textareas ): string {
 				return '<textarea ' . $matches[1] . 'id="' . $matches[2] . '"' . $matches[3] . '>'
-					  . $textareas[$matches[2]]
-					  . '</textarea>';
+					. $textareas[$matches[2]]
+					. '</textarea>';
 			},
 			$text
 		);
@@ -395,9 +395,9 @@ NODE;
 		if ( !self::$envRegex ) {
 			// Find out sequences that seem to be out-of-tag TEX markup like \begin{equation}...\end{equation}:
 			$environments = trim( preg_replace(
-				'/\s*,\s*/', '|',
-				preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' )
-			) );
+				                      '/\s*,\s*/', '|',
+				                      preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' )
+			                      ) );
 			self::$envRegex = '/\\\\begin\\s*\\{(' . $environments . ')\\}(.+?)\\\\end\\s*\\{\1\\}/si';
 		}
 		return self::$envRegex;
@@ -503,9 +503,9 @@ STYLE );
 		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
 		$lang = $skin->getLanguage()->getCode();
 		$output->addScript( '<script id="MathJax-script" async type="text/javascript" src="'
-			. ( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
-			. "/$script?locale=$lang" . '">'
-			. "</script>\n"	);
+		                    . ( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
+		                    . "/$script?locale=$lang" . '">'
+		                    . "</script>\n"	);
 		self::$alreadyAttached = true;
 		// MathJax configuring and attachment complete.
 		return true;
