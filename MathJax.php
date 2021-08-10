@@ -28,8 +28,10 @@ class MathJax {
 	private static $blockRegexes;
 	/** @var string $envRegex A regular expression for searching for regular expressions outside <math>. */
 	private static $envRegex;
-	/** @var array $linked An array of already linked pages. */
-	private static $linked = [];
+	/** @var string $noMathInTheseTags A regex to find HTML tags that cannot contain maths and screen them. */
+	private static $noMathInTheseTags;
+	/** @var array $tagLike TeX commands that are somewhat like HTML tags. */
+	private static $tagLike = [ '>[^<>]*>[^<>]*>', '<[^<>]*<[^<>]*<' ];
 	/** @var string $texConf Complete (with macros) configuration for MathJax's TeX as JSON. */
 	private static $texConf;
 	/** @var string $mjConf Complete (with macros) configuration for MathJax as JSON. */
@@ -70,6 +72,17 @@ class MathJax {
 			. '.+?'
 			. preg_quote( $wgmjTeX['displayMath'][0][1], '/' )
 			. ')/';
+		// Regex to screen tags that cannot contain maths:
+		global $wgmjMathJax;
+		$any_tag = implode( '|', $wgmjMathJax['options']['skipHtmlTags'] );
+		// Should deal with nested tags correctly:
+		self::$noMathInTheseTags
+			= "%<($any_tag)[^>]*?>(\n" // open tag.
+			. '| (' . implode( '|', self::$tagLike ) . ")\n" // >>> in CD.
+			. "| (?>[^<>]+)\n" // non-tag.
+			. "| <($any_tag)[^>]*/>\n" // self-closing tag.
+			. "| (?R)\n" // another tag (recursion).
+			. ")* </\\1>%six"; // close tag.
 
 		// Initialise parser cache.
 		global $wgmjServerSide;
@@ -82,6 +95,7 @@ class MathJax {
 			$services = MediaWikiServices::getInstance();
 			self::$cache = $services->getMainObjectStash();
 		}
+
 		// Powered by MathJax:
 		global $wgFooterIcons, $wgmjPoweredByIconURI;
 		$wgFooterIcons['poweredby']['MathJax'] = [
@@ -110,40 +124,117 @@ class MathJax {
 		if ( $title ) {
 			$namespace = $title->getNamespace();
 			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
+				// Screen tags, in which we expect no math:
+				[ $text, $screened ] = self::screen( $text, self::$noMathInTheseTags );
 				foreach ( self::$blockRegexes as $regex => $replace ) {
 					$text = preg_replace( $regex, $replace, $text );
 				}
+				$text = self::unscreen( $text, $screened );
 			}
 		}
 		return true;
 	}
 
 	/**
-	 * Return configuration for MathJax's TeX as JSON.
-	 * @return string Configuration as JSON.
+	 * Entry point 3. Hooked by "ParserBeforeInternalParse": "MathJax::freeEnvironments" in extension.json.
+	 *
+	 * Replace free TeX environments \begin{...}...\end{...} with <math display="block">\begin{...}...\end{...}</math>.
+	 *
+	 * @param Parser $parser The Parser object.
+	 * @param string &$text The wikitext to process.
+	 * @param StripState $strip_state
+	 * @return bool Return true on success.
 	 */
-	private static function texConf(): string {
-		if ( !self::$texConf ) {
-			global $wgmjTeX;
-			if ( !isset( $wgmjTeX['macros'] ) || count( $wgmjTeX['macros'] ) === 0 ) {
-				$wgmjTeX['macros'] = self::texMacros();
-			}
-			try {
-				self::$texConf = json_encode( $wgmjTeX, JSON_THROW_ON_ERROR );
-			} catch ( Exception $e ) {
-				self::$texConf = '{}';
+	public static function freeEnvironments( Parser $parser, string &$text, StripState $strip_state ): bool {
+		$title = $parser->getTitle();
+		if ( $title ) {
+			$namespace = $title->getNamespace();
+			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
+				// Screen tags, in which we expect no math:
+				[ $text, $screened ] = self::screen( $text, self::$noMathInTheseTags );
+				// Process TeX environments outside <math>:
+				$text = preg_replace_callback(
+					self::envRegex(),
+					function ( array $matches ): string {
+						// Set flag: MathJax needed:
+						self::$mathJaxNeeded = true;
+						// Prepare free math just as math within <math></math> tag:
+						$wikified = self::wikifyTeX( $matches[0] );
+						global $wgmjServerSide;
+						if ( $wgmjServerSide ) {
+							$wikified = self::tex2MmlServerSide( $wikified, true );
+						} else {
+							$wikified = '<math display="block">' . $wikified . '</math>';
+						}
+						return $wikified;
+					},
+					$text
+				);
+				$text = self::unscreen( $text, $screened );
 			}
 		}
-		return self::$texConf;
+		return true;
 	}
 
 	/**
-	 * Escape string for JavaSctipt.
-	 * @param string $text
-	 * @return string
+	 * Entry point 3. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
+	 *
+	 * Render MML or TEX (<math> or {{#tag:math}}).
+	 *
+	 * @param string $input The content of the <math> tag.
+	 * @param array $args The attributes of the <math> tag.
+	 * @param Parser $parser The parser object.
+	 * @param PPFrame $frame The frame object.
+	 *
+	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
-	private static function escape4JS( $text ) {
-		return strtr( html_entity_decode( $text, ENT_NOQUOTES ), [ '\\' => '\\\\', "\n" => '\n', "'" => "\'" ] );
+	public static function renderMath( string $input, array $args, Parser $parser, PPFrame $frame ): array {
+		$MML = false;
+		$attributes = '';
+		$block = false;
+		// Check tag attributes to decide if it's TeX or MathML:
+		global $wgmjMMLnamespaces;
+		foreach ( $args as $name => $value ) {
+			if ( $name === 'xmlns' && in_array( $value, $wgmjMMLnamespaces, true ) ) {
+				// This seems to be MathML (<math xmlns="http://www.w3.org/1998/Math/MathML">):
+				$attributes = ' xmlns="' . $value . '"';
+				$MML = true;
+			}
+			if ( $name === 'display' ) {
+				if ( $value === 'block' ) {
+					$block = true;
+					$attributes .= ' display="block"';
+				} elseif ( $value === 'inline' ) {
+					$attributes .= ' display="inline"';
+				}
+			}
+			// Any other attribute will be ignored.
+		}
+
+		if ( $MML ) {
+			// Form sanitised MathML code (<math xmlns="http://www.w3.org/1998/Math/MathML">...</math>) for MathJax:
+			global $wgmjMMLTag;
+			$return = "<$wgmjMMLTag$attributes>" . self::wikifyMML( $input ) . "</$wgmjMMLTag>";
+		} else {
+			// TeX.
+			$wikified = self::wikifyTeX( $input );
+			global $wgmjServerSide;
+			if ( $wgmjServerSide ) {
+				$return = self::tex2MmlServerSide( $wikified, $block );
+			} else {
+				// Form inline TeX surrounded by \(...\) or block TeX surrounded with $$...$$ for MathJax:
+				global $wgmjTeX;
+				$return = $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][0]
+						. $wikified
+						. $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][1];
+			}
+		}
+
+		// Flag: MathJax needed:
+		self::$mathJaxNeeded = true;
+
+		// No further processing by MediaWiki:
+		return [ $return, 'markerType' => 'nowiki' ];
 	}
 
 	/**
@@ -152,7 +243,7 @@ class MathJax {
 	 * @param bool $block Block display (not inline).
 	 * @return ?string Converted MML.
 	 */
-	private static function tex2MMLlocally( string $tex, bool $block ): ?string {
+	private static function tex2MmlServerSide( string $tex, bool $block ): ?string {
 		$tex_config = self::texConf();
 		// Cache varying on TeX formula, its display mode and current TeX config.
 		$tex = trim( $tex );
@@ -218,82 +309,99 @@ NODE;
 	}
 
 	/**
-	 * Entry point 3. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
+	 * Entry point 4. Hooked by "BeforePageDisplay": "MathJax::processPage" in extension.json.
 	 *
-	 * Render MML or TEX (<math> or {{#tag:math}}).
+	 * Attach MathJax, if needed.
 	 *
-	 * @param string $input The content of the <math> tag.
-	 * @param array $args The attributes of the <math> tag.
-	 * @param Parser $parser The parser object.
-	 * @param PPFrame $frame The frame object.
+	 * @param OutputPage &$output The OutputPage object.
+	 * @param Skin $skin The Skin object.
 	 *
-	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
+	 * @return bool Return true on success.
 	 */
-	public static function renderMath( string $input, array $args, Parser $parser, PPFrame $frame ): array {
-		$MML = false;
-		$attributes = '';
-		$block = false;
-		// Check tag attributes to decide if it's TeX or MathML:
-		global $wgmjMMLnamespaces;
-		foreach ( $args as $name => $value ) {
-			if ( $name === 'xmlns' && in_array( $value, $wgmjMMLnamespaces, true ) ) {
-				// This seems to be MathML (<math xmlns="http://www.w3.org/1998/Math/MathML">):
-				$attributes = ' xmlns="' . $value . '"';
-				$MML = true;
-			}
-			if ( $name === 'display' ) {
-				if ( $value === 'block' ) {
-					$block = true;
-					$attributes .= ' display="block"';
-				} elseif ( $value === 'inline' ) {
-					$attributes .= ' display="inline"';
-				}
-			}
-			// Any other attribute will be ignored.
+	public static function processPage( OutputPage &$output, Skin $skin ): bool {
+		$namespace = $output->getTitle()->getNamespace();
+		$text = $output->mBodytext;
+		if ( !$text || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
+			return true;
 		}
 
-		if ( $MML ) {
-			// Form sanitised MathML code (<math xmlns="http://www.w3.org/1998/Math/MathML">...</math>) for MathJax:
-			global $wgmjMMLTag;
-			$return = "<$wgmjMMLTag$attributes>" . self::wikifyMML( $input ) . "</$wgmjMMLTag>";
+		// <math> (already processed). Set flag: MathJax needed:
+		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $text );
+
+		// Attach MathJax JavaScript, if necessary:
+		global $wgmjClientSide;
+		if ( $wgmjClientSide ) {
+			$namespace = $output->getTitle()->getNamespace();
+			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI // not in Special: or Media:
+				&& self::$mathJaxNeeded // MathJax needed flag has been raised.
+			) {
+				self::attachMathJaxIfNotYet( $output, $skin );
+			}
 		} else {
-			// TeX.
-			$wikified = self::wikifyTeX( $input );
 			global $wgmjServerSide;
 			if ( $wgmjServerSide ) {
-				$return = self::tex2MMLlocally( $wikified, $block );
-			} else {
-				// Form inline TeX surrounded by \(...\) or block TeX surrounded with $$...$$ for MathJax:
-				global $wgmjTeX;
-				$return = $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][0]
-						. $wikified
-						. $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][1];
+				$output->addInlineStyle( <<<'STYLE'
+math {font-size: 150%;}
+math>semantics>annotation {display:none;}
+STYLE );
 			}
 		}
-		// Flag: MathJax needed:
-		self::$mathJaxNeeded = true;
-
-		// No further processing by MediaWiki:
-		return [ $return, 'markerType' => 'nowiki' ];
+		return true;
 	}
 
 	/**
-	 * Prepare TeX for MathJax.
+	 * Configure MathJax and attach MathJax scripts:
+	 *
+	 * @param OutputPage &$output The OutputPage object.
+	 * @param Skin $skin The Skin object.
+	 *
+	 * @return bool Return true on success.
+	 */
+	private static function attachMathJaxIfNotYet( OutputPage &$output, Skin $skin ): bool {
+		// Prevent multiple attaching:
+		if ( self::$alreadyAttached ) {
+			return true;
+		}
+		// CDN or local:
+		global $wgmjServerSide, $wgmjUseCDN, $wgmjCDNDistribution, $wgExtensionAssetsPath, $wgmjLocalDistribution;
+		// Attaching scripts:
+		$jsonConfig = self::mjConf();
+		$output->addInlineScript( "window.MathJax = $jsonConfig;" );
+		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
+		$lang = $skin->getLanguage()->getCode();
+		$output->addScriptFile(
+			( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
+			. "/$script?locale=$lang"
+		);
+		self::$alreadyAttached = true;
+		// MathJax configuring and attachment complete.
+		return true;
+	}
+
+	/*
+	 * Math wikification.
+	 */
+
+	/**
+	 * Prepare TeX for MathJax ([[]] wikilinks).
 	 *
 	 * @param string $tex The TeX code to wikify.
 	 *
 	 * @return string The wikified TeX code.
 	 */
 	private static function wikifyTeX( string $tex ): string {
-		// Replace article titles in \href{...} or [[...]] with their canonical URLs, then strip HTML tags:
-		return strip_tags( preg_replace_callback(
-								// \href{...}, [[...]]
-								[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
-								function ( $matches ): string {
-									return self::texHyperlink( $matches[1], $matches[2] );
-								},
-								$tex
+		// Replace article titles in \href{...} or [[...]] with their canonical URLs, then strip HTML tags.
+		// Commutative diagrams arrows (<<<, >>>) suffer from strip_tags, so, we screen arrows:
+		[ $wikified, $screened ] = self::screen( $tex, '/' . implode( '|', self::$tagLike ) . '/' );
+		$wikified = strip_tags( preg_replace_callback(
+			// \href{...}, [[...]]
+			[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
+			function ( $matches ): string {
+				return self::texHyperlink( $matches[1], $matches[2] );
+			},
+			$wikified
 		) );
+		return self::unscreen( $wikified, $screened );
 	}
 
 	/**
@@ -350,55 +458,9 @@ NODE;
 		return strip_tags( $ret, $mmlTagsAllowedGlued ); // remove HTML.
 	}
 
-	/**
-	 * Entry point 4. Hooked by "BeforePageDisplay": "MathJax::processPage" in extension.json.
-	 *
-	 * Process environments outside <math> tags, attach MathJax, if needed.
-	 *
-	 * @param OutputPage &$output The OutputPage object.
-	 * @param Skin $skin The Skin object.
-	 *
-	 * @return bool Return true on success.
+	/*
+	 * Prepare and serve needed configurations.
 	 */
-	public static function processPage( OutputPage &$output, Skin $skin ): bool {
-		$namespace = $output->getTitle()->getNamespace();
-		$text = $output->mBodytext;
-		if ( !$text || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
-			return true;
-		}
-		// Screen <textarea>s:
-		$textareas = [];
-		$text = preg_replace_callback(
-			'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)>(.*?)</textarea>%si',
-			static function ( array $matches ) use ( &$textareas ): string {
-				$textareas[$matches[2]] = $matches[4];
-				return '<textarea ' . $matches[1] . 'id="' . $matches[2] . '"' . $matches[3] . '></textarea>';
-			},
-			$text
-		);
-
-		// Process TeX environments outside <math>:
-		$text = self::sanitizeFreeEnvironments( $text );
-
-		// <math> (already processed). Set flag: MathJax needed:
-		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $text );
-
-		// Unscreen <textarea>s:
-		$output->mBodytext = preg_replace_callback(
-			'%<textarea\s+(.*?)id\s*=\s*"([^"]+)"(.*?)></textarea>%si',
-			static function ( array $matches ) use ( $textareas ): string {
-				return '<textarea ' . $matches[1] . 'id="' . $matches[2] . '"' . $matches[3] . '>'
-					. $textareas[$matches[2]]
-					. '</textarea>';
-			},
-			$text
-		);
-
-		// Attach MathJax JavaScript, if necessary:
-		self::attach( $output, $skin );
-
-		return true;
-	}
 
 	/**
 	 * Get a regular expression for free TeX environments.
@@ -412,64 +474,9 @@ NODE;
 				'/\s*,\s*/', '|',
 				preg_quote( wfMessage( 'mathjax-environments' )->inContentLanguage()->text(), '/' )
 			) );
-			self::$envRegex = '/\\\\begin\\s*\\{(' . $environments . ')\\}(.+?)\\\\end\\s*\\{\1\\}/si';
+			self::$envRegex = "/\\\\begin\\s*\\{($environments)\\}(.+?)\\\\end\\s*\\{\\1\\}/si";
 		}
 		return self::$envRegex;
-	}
-
-	/**
-	 * Find TeX environments outside <math>:
-	 *
-	 * @param string $text Wikitext to find free TeX environments in.
-	 *
-	 * @return string The wikitext with sanitized free TeX environments.
-	 */
-	private static function sanitizeFreeEnvironments( string $text ): string {
-		// Allow indentation in free equations -- remove all <p> and <pre> tags from within formulae. Also remove <a>:
-		return preg_replace_callback(
-			self::envRegex(),
-			function ( array $matches ): string {
-				// Set flag: MathJax needed:
-				self::$mathJaxNeeded = true;
-				// Prepare free math just as math within <math></math> tag:
-				$wikified = self::wikifyTeX( $matches[0] );
-				global $wgmjServerSide;
-				if ( $wgmjServerSide ) {
-					$wikified = self::tex2MMLlocally( $wikified, true );
-				}
-				return $wikified;
-			},
-			$text
-		);
-	}
-
-	/**
-	 * Attach MathJax scripts if the page contains prepared TeX or MathML.
-	 *
-	 * @param OutputPage &$output OutputPage object.
-	 * @param Skin $skin Skin object.
-	 *
-	 * @return bool Return true on success.
-	 */
-	private static function attach( OutputPage &$output, Skin $skin ): bool {
-		global $wgmjClientSide;
-		if ( $wgmjClientSide ) {
-			$namespace = $output->getTitle()->getNamespace();
-			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI // not in Special: or Media:
-				&& self::$mathJaxNeeded // MathJax needed flag has been raised.
-			) {
-				self::attachMathJaxIfNotYet( $output, $skin );
-			}
-		} else {
-			global $wgmjServerSide;
-			if ( $wgmjServerSide ) {
-				$output->addInlineStyle( <<<'STYLE'
-math {font-size: 150%;}
-math>semantics>annotation {display:none;}
-STYLE );
-			}
-		}
-		return true;
 	}
 
 	/**
@@ -494,35 +501,6 @@ STYLE );
 			}
 		}
 		return self::$mjConf;
-	}
-
-	/**
-	 * Configure MathJax and attach MathJax scripts:
-	 *
-	 * @param OutputPage &$output The OutputPage object.
-	 * @param Skin $skin The Skin object.
-	 *
-	 * @return bool Return true on success.
-	 */
-	private static function attachMathJaxIfNotYet( OutputPage &$output, Skin $skin ): bool {
-		// Prevent multiple attaching:
-		if ( self::$alreadyAttached ) {
-			return true;
-		}
-		// CDN or local:
-		global $wgmjServerSide, $wgmjUseCDN, $wgmjCDNDistribution, $wgExtensionAssetsPath, $wgmjLocalDistribution;
-		// Attaching scripts:
-		$jsonConfig = self::mjConf();
-		$output->addInlineScript( "window.MathJax = $jsonConfig;" );
-		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
-		$lang = $skin->getLanguage()->getCode();
-		$output->addScriptFile(
-			( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
-			. "/$script?locale=$lang"
-		);
-		self::$alreadyAttached = true;
-		// MathJax configuring and attachment complete.
-		return true;
 	}
 
 	/**
@@ -552,6 +530,71 @@ STYLE );
 			}
 		}
 		return $macros;
+	}
+
+	/**
+	 * Return configuration for MathJax's TeX as JSON.
+	 * @return string Configuration as JSON.
+	 */
+	private static function texConf(): string {
+		if ( !self::$texConf ) {
+			global $wgmjTeX;
+			if ( !isset( $wgmjTeX['macros'] ) || count( $wgmjTeX['macros'] ) === 0 ) {
+				$wgmjTeX['macros'] = self::texMacros();
+			}
+			try {
+				self::$texConf = json_encode( $wgmjTeX, JSON_THROW_ON_ERROR );
+			} catch ( Exception $e ) {
+				self::$texConf = '{}';
+			}
+		}
+		return self::$texConf;
+	}
+
+	/*
+	 * Utilities.
+	 */
+
+	/**
+	 * Screen certain substrings matching a regular expression.
+	 * Unscreen with self::unscreen().
+	 * @param string $text Text to screen.
+	 * @param string $regex Regular expression to screen.
+	 * @return array Element 0 contains text with screened substrings, 1 is an array with screened substrings.
+	 */
+	private static function screen( string $text, string $regex ): array {
+		$screened = [];
+		$counter = 0;
+		$text = preg_replace_callback(
+			$regex,
+			static function ( array $matches ) use ( &$screened, &$counter ): string {
+				$screened[$counter] = $matches[0];
+				return "&&&&" . ( $counter++ ) . '&&&&';
+			},
+			$text
+		);
+		return [ $text, $screened ];
+	}
+
+	/**
+	 * Unscreen screened substrings.
+	 * @param string $text Text with screened substrings.
+	 * @param array $screened Screened substrings.
+	 * @return string Text with unscreened substrings.
+	 */
+	private static function unscreen( string $text, array $screened ): string {
+		return preg_replace_callback( '/&&&&(\\d+)&&&&/', static function ( array $matches ) use ( $screened ): string {
+			return $screened[(int)$matches[1]];
+		}, $text );
+	}
+
+	/**
+	 * Escape string for JavaSctipt.
+	 * @param string $text
+	 * @return string
+	 */
+	private static function escape4JS( $text ) {
+		return strtr( html_entity_decode( $text, ENT_NOQUOTES ), [ '\\' => '\\\\', "\n" => '\n', "'" => "\'" ] );
 	}
 
 	/**
