@@ -26,6 +26,7 @@
 	"Hooks": {
 		"ParserFirstCallInit":          "MathJax::setup",
 		"ParserBeforeInternalParse":    "MathJax::blockDisplay",
+		"ParserBeforeInternalParse":    "MathJax::freeEnvironments",
 		"BeforePageDisplay":            "MathJax::processPage"
 	},
 	"config_prefix": "wgmj",
@@ -109,7 +110,8 @@
 						"tt",
 						"nowiki",
 						"kbd",
-						"syntaxhighlight"
+						"syntaxhighlight",
+						"math"
 					],
 					"ignoreHtmlClass": [
 						"tex2jax_ignore",
