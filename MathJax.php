@@ -30,6 +30,8 @@ class MathJax {
 	private static $envRegex;
 	/** @var string $noMathInTheseTags A regex to find HTML tags that cannot contain maths and screen them. */
 	private static $noMathInTheseTags;
+	/** @var string $mathTagRegex A regex to fing <math> or {{#tag:math|}}}. */
+	private static $mathTagRegex;
 	/** @var array $tagLike TeX commands that are somewhat like HTML tags. */
 	private static $tagLike = [ '>[^<>]*>[^<>]*>', '<[^<>]*<[^<>]*<' ];
 	/** @var string $texConf Complete (with macros) configuration for MathJax's TeX as JSON. */
@@ -38,6 +40,8 @@ class MathJax {
 	private static $mjConf;
 	/** @var BagOStuff $cache Parser cache to store the results of TeX to MML conversion. */
 	private static $cache;
+	/** @var int $screenCounter A counter for the screen() method. */
+	private static $screenCounter = 0;
 
 	/**
 	 * Entry point 1. Hooked by "ParserFirstCallInit": "MathJax::setup" in extension.json.
@@ -83,6 +87,7 @@ class MathJax {
 			. "| <($any_tag)[^>]*/>\n" // self-closing tag.
 			. "| (?R)\n" // another tag (recursion).
 			. ")* </\\1>%six"; // close tag.
+		self::$mathTagRegex = "%<{$wgmjMathTag}[^>]*?>.*?</$wgmjMathTag>|{{#tag:math\\|.*?}}%si";
 
 		// Initialise parser cache.
 		global $wgmjServerSide;
@@ -150,8 +155,8 @@ class MathJax {
 		if ( $title ) {
 			$namespace = $title->getNamespace();
 			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
-				// Screen tags, in which we expect no math:
-				[ $text, $screened ] = self::screen( $text, self::$noMathInTheseTags );
+				// Screen tags, in which we expect no math, and <math> itself:
+				[ $text, $screened ] = self::screen( $text, self::$noMathInTheseTags, self::$mathTagRegex );
 				// Process TeX environments outside <math>:
 				$text = preg_replace_callback(
 					self::envRegex(),
@@ -170,6 +175,7 @@ class MathJax {
 					},
 					$text
 				);
+				// Unscreen all:
 				$text = self::unscreen( $text, $screened );
 			}
 		}
@@ -551,26 +557,6 @@ STYLE );
 		return self::$texConf;
 	}
 
-	/**
-	 * Entry point 5.
-	 * Register Lua modules.
-	 *
-	 * @param string $engine
-	 * @param array &$extraLibraries
-	 * @return bool
-	 */
-	public static function registerLua( $engine, array &$extraLibraries ) {
-		$class = 'EDScribunto';
-		// Autoload class here and not in extension.json, so that it is not loaded if Scribunto is not enabled.
-		global $wgAutoloadClasses;
-		$wgAutoloadClasses[$class] = __DIR__ . '/' . $class . '.php';
-		$extraLibraries['mw.ext.externaldata'] = $class;
-		return true; // always return true, in order not to stop MW's hook processing!
-	}
-	function( $engine, array &$extraLibraries ) {
-		$extraLibraries['mw.ext.math'] = 'SMW\Scribunto\ScribuntoLuaLibrary';
-		return true;
-	};
 	/*
 	 * Utilities.
 	 */
@@ -579,20 +565,23 @@ STYLE );
 	 * Screen certain substrings matching a regular expression.
 	 * Unscreen with self::unscreen().
 	 * @param string $text Text to screen.
-	 * @param string $regex Regular expression to screen.
+	 * @param string ...$regexes Regular expression(s) to screen.
 	 * @return array Element 0 contains text with screened substrings, 1 is an array with screened substrings.
 	 */
-	private static function screen( string $text, string $regex ): array {
+	private static function screen( string $text, string ...$regexes ): array {
 		$screened = [];
-		$counter = 0;
-		$text = preg_replace_callback(
-			$regex,
-			static function ( array $matches ) use ( &$screened, &$counter ): string {
-				$screened[$counter] = $matches[0];
-				return "&&&&" . ( $counter++ ) . '&&&&';
-			},
-			$text
-		);
+		$counter = self::$screenCounter;
+		foreach ( $regexes as $regex ) {
+			$text = preg_replace_callback(
+				$regex,
+				static function ( array $matches ) use ( &$screened, &$counter ): string {
+					$screened[$counter /* self is inherited */ ] = $matches[0];
+					return "&&&&" . ( $counter++ ) . '&&&&';
+				},
+				$text
+			);
+		}
+		self::$screenCounter = $counter;
 		return [ $text, $screened ];
 	}
 

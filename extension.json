@@ -109,8 +109,7 @@
 						"tt",
 						"nowiki",
 						"kbd",
-						"syntaxhighlight",
-						"math"
+						"syntaxhighlight"
 					],
 					"ignoreHtmlClass": [
 						"tex2jax_ignore",
