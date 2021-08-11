@@ -551,6 +551,26 @@ STYLE );
 		return self::$texConf;
 	}
 
+	/**
+	 * Entry point 5.
+	 * Register Lua modules.
+	 *
+	 * @param string $engine
+	 * @param array &$extraLibraries
+	 * @return bool
+	 */
+	public static function registerLua( $engine, array &$extraLibraries ) {
+		$class = 'EDScribunto';
+		// Autoload class here and not in extension.json, so that it is not loaded if Scribunto is not enabled.
+		global $wgAutoloadClasses;
+		$wgAutoloadClasses[$class] = __DIR__ . '/' . $class . '.php';
+		$extraLibraries['mw.ext.externaldata'] = $class;
+		return true; // always return true, in order not to stop MW's hook processing!
+	}
+	function( $engine, array &$extraLibraries ) {
+		$extraLibraries['mw.ext.math'] = 'SMW\Scribunto\ScribuntoLuaLibrary';
+		return true;
+	};
 	/*
 	 * Utilities.
 	 */

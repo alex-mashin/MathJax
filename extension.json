@@ -24,10 +24,9 @@
 		"MathJax": "MathJax.php"
 	},
 	"Hooks": {
-		"ParserFirstCallInit":          "MathJax::setup",
-		"ParserBeforeInternalParse":    "MathJax::blockDisplay",
-		"ParserBeforeInternalParse":    "MathJax::freeEnvironments",
-		"BeforePageDisplay":            "MathJax::processPage"
+		"ParserFirstCallInit":              "MathJax::setup",
+		"ParserBeforeInternalParse":        ["MathJax::blockDisplay",	"MathJax::freeEnvironments"],
+		"BeforePageDisplay":                "MathJax::processPage"
 	},
 	"config_prefix": "wgmj",
 	"config": {
