@@ -26,7 +26,8 @@
 	"Hooks": {
 		"ParserFirstCallInit":              "MathJax::setup",
 		"ParserBeforeInternalParse":        ["MathJax::blockDisplay",	"MathJax::freeEnvironments"],
-		"BeforePageDisplay":                "MathJax::processPage"
+		"BeforePageDisplay":                "MathJax::processPage",
+		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua"
 	},
 	"config_prefix": "wgmj",
 	"config": {

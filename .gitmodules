@@ -1,9 +1,6 @@
 [submodule "src/symmath-lua"]
-	path = src/symmath-lua
+	path = lualib/vendor/symmath
 	url = https://github.com/thenumbernine/symmath-lua.git
 [submodule "src/lua-ext"]
-	path = src/lua-ext
+	path = lualib/vendor/ext
 	url = https://github.com/thenumbernine/lua-ext.git
-[submodule "src/lua-gnuplot"]
-	path = src/lua-gnuplot
-	url = https://github.com/thenumbernine/lua-gnuplot.git
