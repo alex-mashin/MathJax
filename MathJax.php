@@ -68,13 +68,16 @@ class MathJax {
 			=> "\n{{#tag:" . $wgmjMathTag . '|$1$2|display="block"}}'
 		];
 		global $wgmjTeX;
-		self::$mathRegex = '/(' . preg_quote( $wgmjTeX['inlineMath'][0][0], '/' )
+		self::$mathRegex = '/('
+			. preg_quote( $wgmjTeX['inlineMath'][0][0], '/' )
 			. '.+?'
 			. preg_quote( $wgmjTeX['inlineMath'][0][1], '/' )
 			. '|'
 			. preg_quote( $wgmjTeX['displayMath'][0][0], '/' )
 			. '.+?'
 			. preg_quote( $wgmjTeX['displayMath'][0][1], '/' )
+			. '|'
+			. "<$tag"
 			. ')/';
 		// Regex to screen tags that cannot contain maths:
 		global $wgmjMathJax;
