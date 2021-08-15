@@ -84,7 +84,7 @@ class MathJax {
 		$any_tag = implode( '|', $wgmjMathJax['options']['skipHtmlTags'] );
 		// Should deal with nested tags correctly:
 		self::$noMathInTheseTags
-			= "%<($any_tag)[^>]*?>(\n" // open tag.
+			= "%<($any_tag)[^>]*?(?<!/)>(\n" // open tag.
 			. '| (' . implode( '|', self::$tagLike ) . ")\n" // >>> in CD.
 			. "| (?>[^<>]+)\n" // non-tag.
 			. "| <($any_tag)[^>]*/>\n" // self-closing tag.
