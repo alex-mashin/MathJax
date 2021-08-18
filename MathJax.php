@@ -1,6 +1,7 @@
 <?php
 use MediaWiki\MediaWikiServices;
 use Wikimedia\AtEase\AtEase;
+use MediaWiki\Shell\Shell;
 use function MediaWiki\restoreWarnings;
 use function MediaWiki\suppressWarnings;
 
@@ -286,33 +287,23 @@ require('mathjax-full').init({
 	)).then(mml => console.log(mml));
 }).catch(err => console.log(err));
 NODE;
-		$cmd = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm -';
-		$descriptorspec = [
-			[ 'pipe', 'r' ], // stdin is a pipe that the child will read from.
-			[ 'pipe', 'w' ], // stdout is a pipe that the child will write to.
-			[ 'pipe', 'w' ] // stderr is a pipe that the child will write to.
-		];
-		// phpcs:ignore
-		$process = proc_open( $cmd, $descriptorspec, $pipes, __DIR__ );
-		// phpcs:ignore
-		if ( is_resource( $process ) ) {
-			self::suppressWarnings();
-			fwrite( $pipes[0], $node_command );
-			self::restoreWarnings();
-			fclose( $pipes[0] );
-			$mml = stream_get_contents( $pipes[1] );
-			fclose( $pipes[1] );
-			$error = stream_get_contents( $pipes[2] );
-			fclose( $pipes[2] );
-			proc_close( $process );
-		}
-		if ( !$error ) {
+		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm -';
+
+		$result = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
+			->input( $node_command )
+			->environment( [ 'NODE_PATH' => __DIR__ . '/node_modules' ] ) // MathJax installed locally.
+			->limits( [ 'time' => 300 ] )
+			->execute();
+		$exit_code = $result->getExitCode();
+		$mml = $result->getStdout();
+		$error = $result->getStderr();
+		if ( $exit_code === 0 && !$error ) {
 			global $wgmjCacheExpiration;
 			self::$cache->set( $key, $mml, $wgmjCacheExpiration );
 			return $mml;
 		} else {
 			return '<span class="error">'
-				. wfMessage( 'mathjax-broken-tex', $tex, $error )->inContentLanguage()->text()
+				. wfMessage( 'mathjax-broken-tex', $tex, $exit_code, $error )->inContentLanguage()->text()
 				. '</span>';
 		}
 	}

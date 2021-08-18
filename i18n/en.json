@@ -6,7 +6,7 @@
 		]
 	},
 	"mathjax-desc": "Enables [[TeX]] and [[MathML]] formulae rendered by [[MathJax]]",
-	"mathjax-broken-tex": "Could not convert TeX $1 to MML with server-side MathJax: <pre>$2</pre>",
+	"mathjax-broken-tex": "Could not convert TeX $1 to MML with server-side MathJax: exit code $2, error: <pre>$3</pre>",
 
 	"mathjax-environments": "align, align*, alignat, alignat*, aligned, alignedat, array, Bmatrix, bmatrix, cases, CD, eqnarray, eqnarray*, equation, equation*, gather, gather*, gathered, matrix, multline, multline*, pmatrix, smallmatrix, split, subarray, Vmatrix, vmatrix",
 
