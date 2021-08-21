@@ -1,7 +1,7 @@
 <?php
 use MediaWiki\MediaWikiServices;
-use Wikimedia\AtEase\AtEase;
 use MediaWiki\Shell\Shell;
+use Wikimedia\AtEase\AtEase;
 use function MediaWiki\restoreWarnings;
 use function MediaWiki\suppressWarnings;
 
@@ -292,7 +292,6 @@ NODE;
 		$result = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
 			->input( $node_command )
 			->environment( [ 'NODE_PATH' => __DIR__ . '/node_modules' ] ) // MathJax installed locally.
-			->limits( [ 'time' => 300 ] )
 			->execute();
 		$exit_code = $result->getExitCode();
 		$mml = $result->getStdout();
