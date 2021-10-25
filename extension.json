@@ -27,7 +27,8 @@
 		"ParserFirstCallInit":              "MathJax::setup",
 		"ParserBeforeInternalParse":        ["MathJax::blockDisplay",	"MathJax::freeEnvironments"],
 		"BeforePageDisplay":                "MathJax::processPage",
-		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua"
+		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua",
+		"SoftwareInfo":                     "MathJax::register"
 	},
 	"config_prefix": "wgmj",
 	"config": {
@@ -110,7 +111,8 @@
 						"tt",
 						"nowiki",
 						"kbd",
-						"syntaxhighlight"
+						"syntaxhighlight",
+						"plantuml"
 					],
 					"ignoreHtmlClass": [
 						"tex2jax_ignore",

@@ -1,6 +1,6 @@
 {
 	"name": "MathJax for MediaWiki",
-	"description": "A MediaWiki extension that renderes formulæ wth MathJax",
+	"description": "A MediaWiki extension that renderes formulæ with MathJax",
 	"version": "2.0",
 	"scripts": {
 		"test": "grunt test"
