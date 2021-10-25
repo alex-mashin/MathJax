@@ -131,7 +131,8 @@
 					"enableEnrichment": true
 				}
 			},
-			"description": "MathJax configuration to be used client-side. Only relevant with $wgmjClientSide = true."
+			"description": "MathJax configuration to be used client-side. Only relevant with $wgmjClientSide = true.",
+			"mrge_strategy": "array_merge_recursive"
 		},
 		"MMLtagsAllowed": {
 			"value": [
