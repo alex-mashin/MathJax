@@ -586,7 +586,7 @@ STYLE );
 			$text = preg_replace_callback(
 				$regex,
 				static function ( array $matches ) use ( &$screened, &$counter ): string {
-					$screened[$counter /* self is inherited */ ] = $matches[0];
+					$screened[ $counter ] = $matches[0];
 					return "&&&&" . ( $counter++ ) . '&&&&';
 				},
 				$text
@@ -639,5 +639,30 @@ STYLE );
 		} else {
 			restoreWarnings();
 		}
+	}
+
+	/**
+	 * Register used MathJax version for Special:Version.
+	 *
+	 * @param array &$software
+	 */
+	public static function register( array &$software ) {
+		$cache = MediaWikiServices::getInstance()->getLocalServerObjectCache();
+		$software['[https://www.mathjax.org/ MathJax]'] = $cache->getWithSetCallback(
+			$cache->makeGlobalKey( __CLASS__, 'MathJax version' ),
+			3600,
+			static function () {
+				try {
+					$result = Shell::command( explode( ' ', 'npm list -l --prefix ' . __DIR__ . ' mathjax-full' ) )
+						->restrict( Shell::RESTRICT_DEFAULT | Shell::NO_NETWORK )
+						->execute();
+				} catch ( Exception $e ) {
+					return null;
+				}
+				if ( $result->getExitCode() === 0 && preg_match( '/mathjax.+$/s', $result->getStdout(), $match ) ) {
+					return trim( $match[0] );
+				}
+			}
+		) ?: '(unknown version)';
 	}
 }
