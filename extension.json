@@ -27,7 +27,8 @@
 		"ParserFirstCallInit":              "MathJax::setup",
 		"ParserBeforeInternalParse":        ["MathJax::blockDisplay",	"MathJax::freeEnvironments"],
 		"BeforePageDisplay":                "MathJax::processPage",
-		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua"
+		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua",
+		"SoftwareInfo":                     "MathJax::register"
 	},
 	"config_prefix": "wgmj",
 	"config": {
@@ -129,7 +130,8 @@
 					"enableEnrichment": true
 				}
 			},
-			"description": "MathJax configuration to be used client-side. Only relevant with $wgmjClientSide = true."
+			"description": "MathJax configuration to be used client-side. Only relevant with $wgmjClientSide = true.",
+			"mrge_strategy": "array_merge_recursive"
 		},
 		"MMLtagsAllowed": {
 			"value": [
