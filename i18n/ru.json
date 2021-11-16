@@ -1,6 +1,6 @@
 {
 	"mathjax-desc": "Позволяет вставлять в статьи формулы в формате [[TeX]] и [[MathML]], отрисовываемые [[MathJax]]",
-	"mathjax-broken-tex": "Не удалось преобразовать TeX $1 в MML с помощью серверного MathJax: код возврата $2, ошибка: <pre>$3</pre>",
+	"mathjax-broken-tex": "Не удалось преобразовать TeX в MML с помощью серверного MathJax: ошибка: <pre>$1</pre>",
 
 	"mathjax-macro-tan": "\\operatorname{tg}",
 	"mathjax-macro-tg": "\\operatorname{tg}",

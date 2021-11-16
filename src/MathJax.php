@@ -18,7 +18,6 @@ use function MediaWiki\suppressWarnings;
  * @todo: feed to node.js only the needed macro.
  */
 class MathJax {
-
 	/** @var bool $mathJaxNeeded Page has formulas. */
 	private static $mathJaxNeeded = false;
 	/** @var bool $alreadyAttached Prevent multiple attaching. */
@@ -31,16 +30,10 @@ class MathJax {
 	private static $envRegex;
 	/** @var string $noMathInTheseTags A regex to find HTML tags that cannot contain maths and screen them. */
 	private static $noMathInTheseTags;
-	/** @var string $mathTagRegex A regex to fing <math> or {{#tag:math|}}}. */
-	private static $mathTagRegex;
 	/** @var array $tagLike TeX commands that are somewhat like HTML tags. */
 	private static $tagLike = [ '>[^<>]*>[^<>]*>', '<[^<>]*<[^<>]*<' ];
-	/** @var string $texConf Complete (with macros) configuration for MathJax's TeX as JSON. */
-	private static $texConf;
 	/** @var string $mjConf Complete (with macros) configuration for MathJax as JSON. */
 	private static $mjConf;
-	/** @var BagOStuff $cache Parser cache to store the results of TeX to MML conversion. */
-	private static $cache;
 	/** @var int $screenCounter A counter for the screen() method. */
 	private static $screenCounter = 0;
 
@@ -68,20 +61,20 @@ class MathJax {
 			'/(?:^|\n)\s*(?::+\s*)+{{#tag:' . $tag . '\|(.+?)}}[  ]*([.,:;]?)/si'
 			=> "\n{{#tag:" . $wgmjMathTag . '|$1$2|display="block"}}'
 		];
-		global $wgmjTeX;
+		global $wgmjMathJax;
+		$tex = $wgmjMathJax['tex'];
 		self::$mathRegex = '/('
-			. preg_quote( $wgmjTeX['inlineMath'][0][0], '/' )
+			. preg_quote( $tex['inlineMath'][0][0], '/' )
 			. '.+?'
-			. preg_quote( $wgmjTeX['inlineMath'][0][1], '/' )
+			. preg_quote( $tex['inlineMath'][0][1], '/' )
 			. '|'
-			. preg_quote( $wgmjTeX['displayMath'][0][0], '/' )
+			. preg_quote( $tex['displayMath'][0][0], '/' )
 			. '.+?'
-			. preg_quote( $wgmjTeX['displayMath'][0][1], '/' )
+			. preg_quote( $tex['displayMath'][0][1], '/' )
 			. '|'
 			. "<$tag"
 			. ')/';
 		// Regex to screen tags that cannot contain maths:
-		global $wgmjMathJax;
 		$any_tag = implode( '|', $wgmjMathJax['options']['skipHtmlTags'] );
 		// Should deal with nested tags correctly:
 		self::$noMathInTheseTags
@@ -91,19 +84,6 @@ class MathJax {
 			. "| <($any_tag)[^>]*/>\n" // self-closing tag.
 			. "| (?R)\n" // another tag (recursion).
 			. ")* </\\1>%six"; // close tag.
-		self::$mathTagRegex = "%<{$wgmjMathTag}[^>]*?>.*?</$wgmjMathTag>|{{#tag:math\\|.*?}}%si";
-
-		// Initialise parser cache.
-		global $wgmjServerSide;
-		if ( $wgmjServerSide ) {
-			global $wgmjCacheExpiration;
-			if ( $wgmjCacheExpiration === -1 ) {
-				global $wgParserCacheExpireTime;
-				$wgmjCacheExpiration = $wgParserCacheExpireTime;
-			}
-			$services = MediaWikiServices::getInstance();
-			self::$cache = $services->getMainObjectStash();
-		}
 
 		// Powered by MathJax:
 		global $wgFooterIcons, $wgmjPoweredByIconURI;
@@ -145,49 +125,43 @@ class MathJax {
 	}
 
 	/**
-	 * Entry point 3. Hooked by "ParserBeforeInternalParse": "MathJax::freeEnvironments" in extension.json.
+	 * Entry point 3. Hooked by "InternalParseBeforeLinks": "MathJax::freeEnvironments" in extension.json.
 	 *
-	 * Replace free TeX environments \begin{...}...\end{...} with <math display="block">\begin{...}...\end{...}</math>.
+	 * Wikify free TeX environments \begin{...}...\end{...}, then hide them.
 	 *
 	 * @param Parser $parser The Parser object.
 	 * @param string &$text The wikitext to process.
-	 * @param StripState $strip_state
 	 * @return bool Return true on success.
 	 */
-	public static function freeEnvironments( Parser $parser, string &$text, StripState $strip_state ): bool {
+	public static function freeEnvironments( Parser $parser, string &$text ): bool {
 		$title = $parser->getTitle();
-		if ( $title ) {
-			$namespace = $title->getNamespace();
-			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
-				// Screen tags, in which we expect no math, and <math> itself:
-				[ $text, $screened ] = self::screen( $text, self::$noMathInTheseTags, self::$mathTagRegex );
-				// Process TeX environments outside <math>:
-				$text = preg_replace_callback(
-					self::envRegex(),
-					function ( array $matches ): string {
-						// Set flag: MathJax needed:
-						self::$mathJaxNeeded = true;
-						// Prepare free math just as math within <math></math> tag:
-						$wikified = self::wikifyTeX( $matches[0] );
-						global $wgmjServerSide;
-						if ( $wgmjServerSide ) {
-							$wikified = self::tex2MmlServerSide( $wikified, true );
-						} else {
-							$wikified = '<math display="block">' . $wikified . '</math>';
-						}
-						return $wikified;
-					},
-					$text
-				);
-				// Unscreen all:
-				$text = self::unscreen( $text, $screened );
-			}
+		if ( !$title ) {
+			return true;
 		}
+		$namespace = $title->getNamespace();
+		if ( $namespace < 0 && $namespace === NS_MEDIAWIKI ) {
+			return true;
+		}
+		$counter = 0;
+		// Process TeX environments outside <math>:
+		$text = preg_replace_callback(
+			self::envRegex(),
+			function ( array $matches ) use ( $parser, &$counter ): string {
+				// Set flag: MathJax needed:
+				self::$mathJaxNeeded = true;
+				// Prepare free math just as math within <math></math> tag, then replace it with a strip item:
+				$marker = $parser::MARKER_PREFIX . '-tex-free-environment-' .
+					sprintf( '%08d', $counter++ ) . $parser::MARKER_SUFFIX;
+				$parser->getStripState()->addNoWiki( $marker, self::wikifyTeX( $matches[0] ) );
+				return $marker;
+			},
+			$text
+		);
 		return true;
 	}
 
 	/**
-	 * Entry point 3. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
+	 * Entry point 4. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
 	 *
 	 * Render MML or TEX (<math> or {{#tag:math}}).
 	 *
@@ -228,16 +202,12 @@ class MathJax {
 		} else {
 			// TeX.
 			$wikified = self::wikifyTeX( $input );
-			global $wgmjServerSide;
-			if ( $wgmjServerSide ) {
-				$return = self::tex2MmlServerSide( $wikified, $block );
-			} else {
-				// Form inline TeX surrounded by \(...\) or block TeX surrounded with $$...$$ for MathJax:
-				global $wgmjTeX;
-				$return = $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][0]
-						. $wikified
-						. $wgmjTeX[$block ? 'displayMath' : 'inlineMath'][0][1];
-			}
+			// Form inline TeX surrounded by \(...\) or block TeX surrounded with $$...$$ for MathJax:
+			global $wgmjMathJax;
+			$tex = $wgmjMathJax['tex'];
+			$return = $tex[$block ? 'displayMath' : 'inlineMath'][0][0]
+					. $wikified
+					. $tex[$block ? 'displayMath' : 'inlineMath'][0][1];
 		}
 
 		// Flag: MathJax needed:
@@ -248,69 +218,10 @@ class MathJax {
 	}
 
 	/**
-	 * Convert TeX to MML server-side with node.js and MathJax.
-	 * @param string $tex TeX to convert.
-	 * @param bool $block Block display (not inline).
-	 * @return ?string Converted MML.
-	 */
-	private static function tex2MmlServerSide( string $tex, bool $block ): ?string {
-		$tex_config = self::texConf();
-		// Cache varying on TeX formula, its display mode and current TeX config.
-		$tex = trim( $tex );
-		$key = self::$cache->makeGlobalKey( 'MathJax', 'TeX2MML', $tex, (int)$block, hash( 'fnv1a64', $tex_config ) );
-		$cached = self::$cache->get( $key, BagOStuff::READ_VERIFIED );
-		if ( $cached ) {
-			return $cached;
-		}
-
-		$block_str = $block ? 'true' : 'false';
-		$quoted_tex = self::escape4JS( $tex );
-		// @todo as service.
-		$node_command = <<<NODE
-let tex_conf = $tex_config;
-tex_conf['packages'] = ['base', 'autoload', 'ams', 'newcommand', 'require', 'configmacros'];
-require('mathjax-full').init({
-    loader: {
-        source: {},
-        load: ['input/tex-full', 'adaptors/liteDOM' ]
-    },
-    tex: tex_conf
-}).then((MathJax) => {
-    MathJax.tex2mmlPromise('$quoted_tex' || '', {
-        display: $block_str,
-    }).then(mml => mml.replace (
-		/^<math(.+?)>(.+)<\/math>$/su,
-		'<math$1>\\n<semantics><mrow>$2</mrow>' +
-		'<annotation encoding="application/x-tex">' +
-		'$quoted_tex'.trim().replace(/&/g, '&#38;') +
-		'</annotation>\\n</semantics>\\n</math>'
-	)).then(mml => console.log(mml));
-}).catch(err => console.log(err));
-NODE;
-		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm -';
-
-		$result = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
-			->input( $node_command )
-			->environment( [ 'NODE_PATH' => __DIR__ . '/node_modules' ] ) // MathJax installed locally.
-			->execute();
-		$exit_code = $result->getExitCode();
-		$mml = $result->getStdout();
-		$error = $result->getStderr();
-		if ( $exit_code === 0 && !$error ) {
-			global $wgmjCacheExpiration;
-			self::$cache->set( $key, $mml, $wgmjCacheExpiration );
-			return $mml;
-		} else {
-			return '<span class="error">'
-				. wfMessage( 'mathjax-broken-tex', $tex, $exit_code, $error )->inContentLanguage()->text()
-				. '</span>';
-		}
-	}
-
-	/**
-	 * Entry point 4. Hooked by "BeforePageDisplay": "MathJax::processPage" in extension.json.
+	 * Entry point 5. Hooked by "BeforePageDisplay": "MathJax::processPage" in extension.json.
 	 *
-	 * Attach MathJax, if needed.
+	 * Process TeX server-side, if configured.
+	 * Raise "Attach MathJax" flag, if needed.
 	 *
 	 * @param OutputPage &$output The OutputPage object.
 	 * @param Skin $skin The Skin object.
@@ -318,34 +229,89 @@ NODE;
 	 * @return bool Return true on success.
 	 */
 	public static function processPage( OutputPage &$output, Skin $skin ): bool {
-		$namespace = $output->getTitle()->getNamespace();
-		$text = $output->mBodytext;
-		if ( !$text || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
+		$title = $output->getTitle();
+		if ( !$title ) {
+			return true;
+		}
+		$namespace = $title->getNamespace();
+		if ( !$output->mBodytext || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
 			return true;
 		}
 
 		// <math> (already processed). Set flag: MathJax needed:
-		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $text );
+		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $output->mBodytext );
 
-		// Attach MathJax JavaScript, if necessary:
-		global $wgmjClientSide;
-		if ( $wgmjClientSide ) {
-			$namespace = $output->getTitle()->getNamespace();
-			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI // not in Special: or Media:
-				&& self::$mathJaxNeeded // MathJax needed flag has been raised.
-			) {
-				self::attachMathJaxIfNotYet( $output, $skin );
-			}
-		} else {
+		if ( self::$mathJaxNeeded ) {
+			// Process TeS server-side, if configured.
 			global $wgmjServerSide;
 			if ( $wgmjServerSide ) {
-				$output->addInlineStyle( <<<'STYLE'
-math {font-size: 150%;}
-math>semantics>annotation {display:none;}
-STYLE );
+				$output->mBodytext = self::allTex2mml( $output->mBodytext );
+			}
+
+			// Attach MathJax JavaScript, if necessary:
+			global $wgmjClientSide;
+			if ( $wgmjClientSide ) {
+				self::attachMathJaxIfNotYet( $output, $skin );
+			} else {
+				if ( $wgmjServerSide ) {
+					$output->addInlineStyle( <<<'STYLE'
+						math {font-size: 150%;}
+						math>semantics>annotation {display:none;}
+					STYLE
+					);
+				}
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * @param string $html HTML to find TeX formulae in.
+	 * @return string Processed HTML.
+	 */
+	private static function allTex2mml( string $html ): string {
+		$conf_file = sys_get_temp_dir() . '/MathJax.config.json';
+		if ( !file_exists( $conf_file ) ) {
+			file_put_contents( $conf_file, self::mjConf() );
+		}
+
+		// @todo as service.
+		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm '
+				 . __DIR__ . '/tex2mml.js --conf=' . $conf_file . ' --dist=1';
+		$shell = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
+			->environment( [ 'NODE_PATH' => __DIR__ . '/../node_modules' ] ) // MathJax installed locally.
+			->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
+		if ( strlen( $html ) >= 65536 /* hardcoded in Command::execute() */ ) {
+			// Create a temporary HTML file and pass its name to tex2mml.js:
+			$html_file = sys_get_temp_dir() . '/' . md5( $html );
+			if ( !file_exists( $html_file ) ) {
+				file_put_contents( $html_file, $html );
+			}
+			$shell = $shell->params( $html_file );
+		} else {
+			// HTML is sent to the standard input:
+			$shell = $shell->params( '-' )->input( $html );
+		}
+		self::suppressWarnings();
+		try {
+			$result = $shell->execute();
+		} catch ( Exception $e ) {
+			$error = '<span class="error">'
+				. wfMessage( 'mathjax-broken-tex', $e->getMessage() )->inContentLanguage()->text()
+				. '</span>';
+			self::restoreWarnings();
+			return $error . $html;
+		}
+		self::restoreWarnings();
+
+		if ( $result->getExitCode() === 0 ) {
+			return $result->getStdout();
+		} else {
+			$error = '<span class="error">'
+				   . wfMessage( 'mathjax-broken-tex', $result->getStderr() )->inContentLanguage()->text()
+				   . '</span>';
+			return $error . $html;
+		}
 	}
 
 	/**
@@ -440,7 +406,7 @@ STYLE );
 				$title = Title::newFromText( $matches[1] );
 				if ( $title ) {
 					$alias = $matches[2] ?? $matches[1];
-					return '<maction actiontype="texttip" href="' // was "tooltip" .
+					return '<maction actiontype="texttip" href="'
 						. $title->getFullURL() . '">'
 						. "\n$alias"
 						. "\n<mtext>$alias</mtext>\n</maction>";
@@ -481,20 +447,15 @@ STYLE );
 	/**
 	 * Return configuration for MathJax as JSON.
 	 * @return string Configuration as JSON.
-	 * @todo Different for server-side rendering.
 	 */
 	private static function mjConf(): string {
 		if ( !self::$mjConf ) {
-			global $wgmjMathJax, $wgmjServerSide;
-			if ( !$wgmjServerSide ) {
-				global $wgmjTeX;
-				if ( !isset( $wgmjTeX['macros'] ) || count( $wgmjTeX['macros'] ) === 0 ) {
-					$wgmjTeX['macros'] = self::texMacros();
-				}
-				$wgmjMathJax['tex'] = $wgmjTeX;
+			global $wgmjMathJax;
+			if ( !isset( $wgmjMathJax['tex']['macros'] ) || count( $wgmjMathJax['tex']['macros'] ) === 0 ) {
+				$wgmjMathJax['tex']['macros'] = self::texMacros();
 			}
 			try {
-				self::$mjConf = json_encode( $wgmjMathJax, JSON_THROW_ON_ERROR );
+				self::$mjConf = json_encode( $wgmjMathJax, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT );
 			} catch ( Exception $e ) {
 				self::$mjConf = '{}';
 			}
@@ -529,25 +490,6 @@ STYLE );
 			}
 		}
 		return $macros;
-	}
-
-	/**
-	 * Return configuration for MathJax's TeX as JSON.
-	 * @return string Configuration as JSON.
-	 */
-	private static function texConf(): string {
-		if ( !self::$texConf ) {
-			global $wgmjTeX;
-			if ( !isset( $wgmjTeX['macros'] ) || count( $wgmjTeX['macros'] ) === 0 ) {
-				$wgmjTeX['macros'] = self::texMacros();
-			}
-			try {
-				self::$texConf = json_encode( $wgmjTeX, JSON_THROW_ON_ERROR );
-			} catch ( Exception $e ) {
-				self::$texConf = '{}';
-			}
-		}
-		return self::$texConf;
 	}
 
 	/**
@@ -609,15 +551,6 @@ STYLE );
 	}
 
 	/**
-	 * Escape string for JavaSctipt.
-	 * @param string $text
-	 * @return string
-	 */
-	private static function escape4JS( $text ) {
-		return strtr( html_entity_decode( $text, ENT_NOQUOTES ), [ '\\' => '\\\\', "\n" => '\n', "'" => "\'" ] );
-	}
-
-	/**
 	 * Suppress warnings absolutely.
 	 */
 	private static function suppressWarnings() {
@@ -642,6 +575,8 @@ STYLE );
 	}
 
 	/**
+	 * Entry point 6.
+	 *
 	 * Register used MathJax version for Special:Version.
 	 *
 	 * @param array &$software
