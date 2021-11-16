@@ -1,5 +1,5 @@
 # MathJax extension for MediaWiki
-Version 2.0.
+Version 2.1.
 
 Alexander Mashin, based on work by Mithgol the Webmaster.
 
