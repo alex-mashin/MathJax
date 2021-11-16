@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <ruleset>
-	<exclude-pattern>*/src/lua-ext/*</exclude-pattern>
-	<exclude-pattern>*/src/lua-gnuplot/*</exclude-pattern>
-	<exclude-pattern>*/src/symmath-lua/*</exclude-pattern>
+	<exclude-pattern>lualib</exclude-pattern>
+	<exclude-pattern>tex2mml.js</exclude-pattern>
 	<rule ref="./vendor/mediawiki/mediawiki-codesniffer/MediaWiki">
 		<properties>
 			<property name="allowedPrefixes" type="array">
