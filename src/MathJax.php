@@ -588,7 +588,7 @@ class MathJax {
 			3600,
 			static function () {
 				try {
-					$result = Shell::command( explode( ' ', 'npm list -l --prefix ' . __DIR__ . ' mathjax-full' ) )
+					$result = Shell::command( explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' ) )
 						->restrict( Shell::RESTRICT_DEFAULT | Shell::NO_NETWORK )
 						->execute();
 				} catch ( Exception $e ) {
