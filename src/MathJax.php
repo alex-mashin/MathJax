@@ -26,7 +26,7 @@ class MathJax {
 	private static $mathRegex;
 	/** @var array $blockRegexes Regexps with replacements to search for : <math>...</math> and {{#tag:math|...}}. */
 	private static $blockRegexes;
-	/** @var string $envRegex A regular expression for searching for regular expressions outside <math>. */
+	/** @var string $envRegex A regular expression for searching for equations outside <math>. */
 	private static $envRegex;
 	/** @var string $noMathInTheseTags A regex to find HTML tags that cannot contain maths and screen them. */
 	private static $noMathInTheseTags;
@@ -242,7 +242,7 @@ class MathJax {
 		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $output->mBodytext );
 
 		if ( self::$mathJaxNeeded ) {
-			// Process TeS server-side, if configured.
+			// Process TeX server-side, if configured.
 			global $wgmjServerSide;
 			if ( $wgmjServerSide ) {
 				$output->mBodytext = self::allTex2mml( $output->mBodytext );
@@ -266,6 +266,8 @@ class MathJax {
 	}
 
 	/**
+	 * Convert all TeX formulae in $html to MathML.
+	 * 
 	 * @param string $html HTML to find TeX formulae in.
 	 * @return string Processed HTML.
 	 */
@@ -361,7 +363,7 @@ class MathJax {
 		$wikified = strip_tags( preg_replace_callback(
 			// \href{...}, [[...]]
 			[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
-			function ( $matches ): string {
+			function ( array $matches ): string {
 				return self::texHyperlink( $matches[1], $matches[2] );
 			},
 			$wikified
@@ -529,7 +531,7 @@ class MathJax {
 				$regex,
 				static function ( array $matches ) use ( &$screened, &$counter ): string {
 					$screened[ $counter ] = $matches[0];
-					return "&&&&" . ( $counter++ ) . '&&&&';
+					return '&&&&' . ( $counter++ ) . '&&&&';
 				},
 				$text
 			);
