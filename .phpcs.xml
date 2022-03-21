@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 <ruleset>
 	<exclude-pattern>lualib</exclude-pattern>
+	<exclude-pattern>node_modules</exclude-pattern>
+	<exclude-pattern>resources</exclude-pattern>
+	<exclude-pattern>vendor</exclude-pattern>
 	<exclude-pattern>tex2mml.js</exclude-pattern>
 	<rule ref="./vendor/mediawiki/mediawiki-codesniffer/MediaWiki">
 		<properties>

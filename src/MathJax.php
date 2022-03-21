@@ -104,7 +104,7 @@ class MathJax {
 	 * Also, bring a following comma, full stop, etc. into the formula,
 	 *
 	 * @param Parser $parser The Parser object.
-	 * @param string &$text The wikitext to process.
+	 * @param string $text The wikitext to process.
 	 * @param StripState $strip_state
 	 * @return bool Return true on success.
 	 */
@@ -130,7 +130,7 @@ class MathJax {
 	 * Wikify free TeX environments \begin{...}...\end{...}, then hide them.
 	 *
 	 * @param Parser $parser The Parser object.
-	 * @param string &$text The wikitext to process.
+	 * @param string $text The wikitext to process.
 	 * @return bool Return true on success.
 	 */
 	public static function freeEnvironments( Parser $parser, string &$text ): bool {
@@ -223,7 +223,7 @@ class MathJax {
 	 * Process TeX server-side, if configured.
 	 * Raise "Attach MathJax" flag, if needed.
 	 *
-	 * @param OutputPage &$output The OutputPage object.
+	 * @param OutputPage $output The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
 	 * @return bool Return true on success.
@@ -239,7 +239,8 @@ class MathJax {
 		}
 
 		// <math> (already processed). Set flag: MathJax needed:
-		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $output->mBodytext );
+		self::$mathJaxNeeded = self::$mathJaxNeeded
+							|| ( self::$mathRegex ? preg_match( self::$mathRegex, $output->mBodytext ) : false );
 
 		if ( self::$mathJaxNeeded ) {
 			// Process TeX server-side, if configured.
@@ -267,7 +268,7 @@ class MathJax {
 
 	/**
 	 * Convert all TeX formulae in $html to MathML.
-	 * 
+	 *
 	 * @param string $html HTML to find TeX formulae in.
 	 * @return string Processed HTML.
 	 */
@@ -319,7 +320,7 @@ class MathJax {
 	/**
 	 * Configure MathJax and attach MathJax scripts:
 	 *
-	 * @param OutputPage &$output The OutputPage object.
+	 * @param OutputPage $output The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
 	 * @return bool Return true on success.
@@ -498,7 +499,7 @@ class MathJax {
 	 * External Lua library paths for Scribunto
 	 *
 	 * @param string $engine To be used for the call.
-	 * @param array &$extraLibraryPaths Additional libs.
+	 * @param array $extraLibraryPaths Additional libs.
 	 * @return bool
 	 */
 	public static function registerLua( string $engine, array &$extraLibraryPaths ): bool {
@@ -581,7 +582,7 @@ class MathJax {
 	 *
 	 * Register used MathJax version for Special:Version.
 	 *
-	 * @param array &$software
+	 * @param array $software
 	 */
 	public static function register( array &$software ) {
 		$cache = MediaWikiServices::getInstance()->getLocalServerObjectCache();
@@ -590,9 +591,10 @@ class MathJax {
 			3600,
 			static function () {
 				try {
-					$result = Shell::command( explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' ) )
-						->restrict( Shell::RESTRICT_DEFAULT | Shell::NO_NETWORK )
-						->execute();
+					$result = Shell::command(
+						explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' )
+					)->restrict( Shell::RESTRICT_DEFAULT | Shell::NO_NETWORK )
+					 ->execute();
 				} catch ( Exception $e ) {
 					return null;
 				}
