@@ -51,6 +51,11 @@ class MathJax {
 		global $wgmjMathTag;
 		$parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' );
 
+		// When the parser sees the <chem> tag, it executes
+		// the self::renderChem function:
+		global $wgmjChemTag;
+		$parser->setHook( $wgmjChemTag, __CLASS__ . '::renderChem' );
+
 		// Initialise regexes:
 		$tag = preg_quote( $wgmjMathTag, '/' );
 		self::$blockRegexes = [
@@ -161,18 +166,14 @@ class MathJax {
 	}
 
 	/**
-	 * Entry point 4. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
+	 * Implementation of <math> and <chem>.
 	 *
-	 * Render MML or TEX (<math> or {{#tag:math}}).
-	 *
-	 * @param string $input The content of the <math> tag.
-	 * @param array $args The attributes of the <math> tag.
-	 * @param Parser $parser The parser object.
-	 * @param PPFrame $frame The frame object.
+	 * @param string $input The content of the <math>/<chem> tag.
+	 * @param array $args The attributes of the <math>/<chem> tag.
 	 *
 	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
-	public static function renderMath( string $input, array $args, Parser $parser, PPFrame $frame ): array {
+	private static function renderTag( string $input, array $args ): array {
 		$MML = false;
 		$attributes = '';
 		$block = false;
@@ -206,8 +207,8 @@ class MathJax {
 			global $wgmjMathJax;
 			$tex = $wgmjMathJax['tex'];
 			$return = $tex[$block ? 'displayMath' : 'inlineMath'][0][0]
-					. $wikified
-					. $tex[$block ? 'displayMath' : 'inlineMath'][0][1];
+				. $wikified
+				. $tex[$block ? 'displayMath' : 'inlineMath'][0][1];
 		}
 
 		// Flag: MathJax needed:
@@ -215,6 +216,38 @@ class MathJax {
 
 		// No further processing by MediaWiki:
 		return [ $return, 'markerType' => 'nowiki' ];
+	}
+
+	/**
+	 * Entry point 4. Hooked by $parser->setHook( $wgmjMathTag, __CLASS__ . '::renderMath' ); in self::setup().
+	 *
+	 * Render MML or TEX (<math> or {{#tag:math}}).
+	 *
+	 * @param string $input The content of the <math> tag.
+	 * @param array $args The attributes of the <math> tag.
+	 * @param Parser $parser The parser object.
+	 * @param PPFrame $frame The frame object.
+	 *
+	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
+	 */
+	public static function renderMath( string $input, array $args, Parser $parser, PPFrame $frame ): array {
+		return self::renderTag( $input, $args );
+	}
+
+	/**
+	 * Entry point 4a. Hooked by $parser->setHook( $wgmjMathChem, __CLASS__ . '::renderChem' ); in self::setup().
+	 *
+	 * Render MML or TEX (<chem> or {{#tag:chem}}).
+	 *
+	 * @param string $input The content of the <chem> tag.
+	 * @param array $args The attributes of the <chem> tag.
+	 * @param Parser $parser The parser object.
+	 * @param PPFrame $frame The frame object.
+	 *
+	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
+	 */
+	public static function renderChem( string $input, array $args, Parser $parser, PPFrame $frame ): array {
+		return self::renderTag( '\ce{' . $input . '}', $args );
 	}
 
 	/**

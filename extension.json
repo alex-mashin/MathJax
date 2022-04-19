@@ -41,6 +41,10 @@
 			"value": "math",
 			"description": "The wiki tag to hold the TeX formulæ."
 		},
+		"ChemTag": {
+			"value": "chem",
+			"description": "The wiki tag to hold the TeX chemical formulæ."
+		},
 		"MMLTag": {
 			"value": "math",
 			"description": "The wiki tag to hold the MathML formulæ."
