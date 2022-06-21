@@ -540,9 +540,9 @@ class MathJax {
 			return true;
 		}
 		// Path containing pure Lua libraries that don't need to interact with PHP:
-		$extraLibraryPaths[] = __DIR__ . '/lualib';
-		$extraLibraryPaths[] = __DIR__ . '/lualib/vendor';
-		$extraLibraryPaths[] = __DIR__ . '/lualib/vendor/symmath';
+		$extraLibraryPaths[] = __DIR__ . '/../lualib';
+		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor';
+		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/symmath';
 		return true;
 	}
 
