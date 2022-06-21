@@ -398,7 +398,7 @@ class MathJax {
 			// \href{...}, [[...]]
 			[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
 			function ( array $matches ): string {
-				return self::texHyperlink( $matches[1], $matches[2] ?? $matches[1] );
+				return self::texHyperlink( $matches[1], $matches[2] ?: $matches[1] );
 			},
 			$wikified
 		) );
