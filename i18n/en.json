@@ -10,7 +10,7 @@
 
 	"mathjax-environments": "align, align*, alignat, alignat*, aligned, alignedat, array, Bmatrix, bmatrix, cases, CD, eqnarray, eqnarray*, equation, equation*, gather, gather*, gathered, matrix, multline, multline*, pmatrix, smallmatrix, split, subarray, Vmatrix, vmatrix",
 
-	"mathjax-macros": "Alpha, Beta, Epsilon, Zeta, Eta, Iota, Kappa, Mu, Nu, Omicron, Rho, Tau, Chi, and, or, exist, empty, P, tan, tg, cot, ctg, csc, cosec, arctan, arctg, arccot, arcctg, arcsec, arccsc, arccosec, sh, sinh, ch, cosh, th, tanh, cth, cotanh, coth, sech, csch, arsh, arsinh, arch, arcosh, arth, artanh, arcth, arcotanh, arsech, arcsch, le, leq, ge, geq",
+	"mathjax-macros": "Alpha, Beta, Epsilon, Zeta, Eta, Iota, Kappa, Mu, Nu, Omicron, Rho, Tau, Chi, and, or, exist, empty, P, tan, tg, cot, ctg, csc, cosec, arctan, arctg, arccot, arcctg, arcsec, arccsc, arccosec, sh, sinh, ch, cosh, th, tanh, cth, cotanh, coth, sech, sch, csch, arsh, arsinh, arch, arcosh, arth, artanh, arcth, arcotanh, arsech, arcsch, le, leq, ge, geq",
 
 	"mathjax-macro-Alpha"   : "\\mbox{A}",
 	"mathjax-macro-Beta"    : "\\mbox{B}",
@@ -51,6 +51,7 @@
 	"mathjax-macro-cotanh": "\\operatorname{cotanh}",
 	"mathjax-macro-coth": "\\operatorname{cotanh}",
 	"mathjax-macro-sech": "\\operatorname{sech}",
+	"mathjax-macro-sch": "\\operatorname{sch}",
 	"mathjax-macro-csch": "\\operatorname{csch}",
 	"mathjax-macro-arsh": "\\operatorname{arsinh}",
 	"mathjax-macro-arsinh": "\\operatorname{arsinh}",
