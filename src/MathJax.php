@@ -396,9 +396,9 @@ class MathJax {
 		[ $wikified, $screened ] = self::screen( $tex, '/' . implode( '|', self::$tagLike ) . '/' );
 		$wikified = strip_tags( preg_replace_callback(
 			// \href{...}, [[...]]
-			[ '/\\href\s*\{(?!http)(.+?)\}\s*\{(.+?)\}/ui', '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' ],
+			[ '/\\href\s*\{(?!http)(.+?)}\s*\{(.+?)}/ui', '/\[\[(.+?)(?:\|(.*?))?]]/ui' ],
 			function ( array $matches ): string {
-				return self::texHyperlink( $matches[1], $matches[2] ?: $matches[1] );
+				return self::texHyperlink( $matches[1], $matches[2] );
 			},
 			$wikified
 		) );
