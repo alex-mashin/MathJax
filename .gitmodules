@@ -4,3 +4,6 @@
 [submodule "src/lua-ext"]
 	path = lualib/vendor/ext
 	url = https://github.com/thenumbernine/lua-ext.git
+[submodule "src/complex-lua"]
+	path = lualib/vendor/ext
+	url = https://github.com/thenumbernine/complex-lua
