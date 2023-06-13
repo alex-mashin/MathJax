@@ -1,9 +1,9 @@
-[submodule "src/symmath-lua"]
-	path = lualib/vendor/symmath
-	url = https://github.com/thenumbernine/symmath-lua.git
-[submodule "src/lua-ext"]
+[submodule "lualib/vendor/ext"]
 	path = lualib/vendor/ext
 	url = https://github.com/thenumbernine/lua-ext.git
-[submodule "src/complex-lua"]
-	path = lualib/vendor/ext
+[submodule "lualib/vendor/symmath"]
+	path = lualib/vendor/symmath
+	url = https://github.com/thenumbernine/symmath-lua.git
+[submodule "lualib/vendor/complex"]
+	path = lualib/vendor/complex
 	url = https://github.com/thenumbernine/complex-lua
