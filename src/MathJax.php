@@ -543,6 +543,7 @@ class MathJax {
 		$extraLibraryPaths[] = __DIR__ . '/../lualib';
 		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor';
 		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/symmath';
+		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/complex';		
 		return true;
 	}
 
