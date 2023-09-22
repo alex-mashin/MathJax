@@ -370,6 +370,18 @@ class MathJax {
 		$output->addInlineScript( "window.MathJax = $jsonConfig;" );
 		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
 		$lang = $skin->getLanguage()->getCode();
+		// Add CDN domain to CSP header:
+		global $wgCSPHeader;
+		if ( $wgmjUseCDN && is_array( $wgCSPHeader ) ) {
+			$domain = parse_url( $wgmjCDNDistribution,  PHP_URL_HOST );
+			foreach ( [ 'script-src', 'default-src' ] as $src ) {
+				if ( is_array( $wgCSPHeader[$src] ) ) {
+					if ( !in_array( $domain, $wgCSPHeader[$src], true ) ) {
+						$wgCSPHeader[$src][] = $domain;
+					}
+				}
+			} // -- foreach ( [ 'script-src', 'default-src' ] as $src )
+		}
 		$output->addScriptFile(
 			( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
 			. "/$script?locale=$lang"
