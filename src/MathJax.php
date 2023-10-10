@@ -372,13 +372,15 @@ class MathJax {
 		$lang = $skin->getLanguage()->getCode();
 		// Add CDN domain to CSP header:
 		global $wgCSPHeader;
-		if ( $wgmjUseCDN && is_array( $wgCSPHeader ) ) {
+		if ( $wgmjUseCDN && $wgCSPHeader !== false ) {
+			$wgCSPHeader = is_array( $wgCSPHeader ) ? $wgCSPHeader : [];
 			$domain = parse_url( $wgmjCDNDistribution,  PHP_URL_HOST );
 			foreach ( [ 'script-src', 'default-src' ] as $src ) {
-				if ( is_array( $wgCSPHeader[$src] ) ) {
-					if ( !in_array( $domain, $wgCSPHeader[$src], true ) ) {
-						$wgCSPHeader[$src][] = $domain;
-					}
+				if ( !is_array( $wgCSPHeader[$src] ) ) {
+					$wgCSPHeader[$src] = [];
+				}
+				if ( !in_array( $domain, $wgCSPHeader[$src], true ) ) {
+					$wgCSPHeader[$src][] = $domain;
 				}
 			} // -- foreach ( [ 'script-src', 'default-src' ] as $src )
 		}
