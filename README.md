@@ -8,7 +8,7 @@ Alexander Mashin, based on work by Mithgol the Webmaster.
 that allows to embed mathematical formulae in _TeX_ or _MML_ into wiki pages.
 
 Formulae are rendered by [MathJax](https://docs.mathjax.org/en/latest/index.html) 3.0 or above,
-server-side (converted to MathML), client-side (re-rendered and menu added, or both).
+server-side (converted to MathML), client-side (re-rendered and menu added), or both.
 
 Formulae can be wikified:
 - manually, e.g.: `x' = \frac {x-vt} {\sqrt {1 - {v^2} / [[Speed of light|c]] ^ 2}}`,
