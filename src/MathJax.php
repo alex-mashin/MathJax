@@ -319,7 +319,7 @@ class MathJax {
 			->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
 		if ( strlen( $html ) >= 65536 /* hardcoded in Command::execute() */ ) {
 			// Create a temporary HTML file and pass its name to tex2mml.js:
-			$html_file = sys_get_temp_dir() . '/' . md5( $html );
+			$html_file = sys_get_temp_dir() . '/tex_' . md5( $html );
 			if ( !file_exists( $html_file ) ) {
 				file_put_contents( $html_file, $html );
 			}
@@ -337,6 +337,10 @@ class MathJax {
 				. '</span>';
 			self::restoreWarnings();
 			return $error . $html;
+		} finally {
+			if ( $html_file ) {
+				unlink( $html_file );
+			}
 		}
 		self::restoreWarnings();
 
@@ -557,7 +561,7 @@ class MathJax {
 		$extraLibraryPaths[] = __DIR__ . '/../lualib';
 		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor';
 		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/symmath';
-		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/complex';		
+		$extraLibraryPaths[] = __DIR__ . '/../lualib/vendor/complex';
 		return true;
 	}
 
