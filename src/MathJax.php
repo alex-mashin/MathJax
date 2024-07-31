@@ -645,7 +645,7 @@ class MathJax {
 				try {
 					$result = Shell::command(
 						explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' )
-					)->restrict( Shell::RESTRICT_DEFAULT | Shell::NO_NETWORK )
+					)->disableNetwork()
 					 ->execute();
 				} catch ( Exception $e ) {
 					return null;
