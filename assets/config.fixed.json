@@ -1,0 +1,142 @@
+{
+	"loader": {
+		"load": [
+			"ui\/safe",
+			"input\/tex-full"
+		]
+	},
+	"options": {
+		"skipHtmlTags": [
+			"script",
+			"noscript",
+			"style",
+			"textarea",
+			"pre",
+			"code",
+			"annotation",
+			"annotation-xml",
+			"tt",
+			"nowiki",
+			"kbd",
+			"syntaxhighlight",
+			"plantuml"
+		],
+		"ignoreHtmlClass": [
+			"tex2jax_ignore",
+			"diff"
+		],
+		"menuOptions": {
+			"settings": {
+				"zoom": "DoubleClick",
+				"semantics": true
+			},
+			"annotationTypes": {
+				"TeX": [
+					"application\/x-tex"
+				],
+				"OpenMath": [
+					"OpenMath"
+				]
+			}
+		}
+	},
+	"tex": {
+		"packages": [
+			"base",
+			"autoload",
+			"ams",
+			"newcommand",
+			"require",
+			"configmacros"
+		],
+		"inlineMath": [
+			[
+				"\\(",
+				"\\)"
+			]
+		],
+		"displayMath": [
+			[
+				"$$",
+				"$$"
+			]
+		],
+		"processEnvironments": true,
+		"processRefs": true,
+		"tags": "ams",
+		"tagSide": "right",
+		"tagIndent": "0.8em",
+		"useLabelIds": true,
+		"maxMacros": 1000,
+		"maxBuffer": 10240,
+		"macros": {
+			"Alpha": "\\mbox{A}",
+			"Beta": "\\mbox{B}",
+			"Epsilon": "\\mbox{E}",
+			"Zeta": "\\mbox{Z}",
+			"Eta": "\\mbox{H}",
+			"Iota": "\\mbox{I}",
+			"Kappa": "\\mbox{K}",
+			"Mu": "\\mbox{M}",
+			"Nu": "\\mbox{N}",
+			"Omicron": "\\mbox{O}",
+			"Rho": "\\mbox{P}",
+			"Tau": "\\mbox{T}",
+			"Chi": "\\mbox{X}",
+			"and": "\\mbox{&}",
+			"or": "\\lor",
+			"exist": "\\exists",
+			"empty": "\\emptyset",
+			"P": "\\mbox{P}",
+			"tan": "\\operatorname{tg}",
+			"tg": "\\operatorname{tg}",
+			"cot": "\\operatorname{ctg}",
+			"ctg": "\\operatorname{ctg}",
+			"csc": "\\operatorname{cosec}",
+			"cosec": "\\operatorname{cosec}",
+			"arctan": "\\operatorname{arctg}",
+			"arctg": "\\operatorname{arctg}",
+			"arccot": "\\operatorname{arcctg}",
+			"arcctg": "\\operatorname{arcctg}",
+			"arcsec": "\\operatorname{arcsec}",
+			"arccsc": "\\operatorname{arccosec}",
+			"arccosec": "\\operatorname{arccosec}",
+			"sh": "\\operatorname{sh}",
+			"sinh": "\\operatorname{sh}",
+			"ch": "\\operatorname{ch}",
+			"cosh": "\\operatorname{ch}",
+			"th": "\\operatorname{th}",
+			"tanh": "\\operatorname{th}",
+			"cth": "\\operatorname{cth}",
+			"cotanh": "\\operatorname{cth}",
+			"coth": "\\operatorname{cth}",
+			"sech": "\\operatorname{sech}",
+			"sch": "\\operatorname{sch}",
+			"csch": "\\operatorname{csch}",
+			"arsh": "\\operatorname{arsh}",
+			"arsinh": "\\operatorname{arsh}",
+			"arch": "\\operatorname{arch}",
+			"arcosh": "\\operatorname{arch}",
+			"arth": "\\operatorname{arth}",
+			"artanh": "\\operatorname{arth}",
+			"arcth": "\\operatorname{arcth}",
+			"arcotanh": "\\operatorname{arcth}",
+			"arsech": "\\operatorname{arsech}",
+			"arcsch": "\\operatorname{arcsch}",
+			"le": "\\leqslant",
+			"leq": "\\leqslant",
+			"ge": "\\geqslant",
+			"geq": "\\geqslant",
+			"sin": "\\operatorname{sin}",
+			"cos": "\\operatorname{cos}",
+			"sec": "\\operatorname{sec}",
+			"arcsin": "\\operatorname{arcsin}",
+			"arccos": "\\operatorname{arccos}",
+			"ln": "\\operatorname{ln}",
+			"lg": "\\operatorname{lg}"
+		}
+	},
+	"chtml": {
+		"scale": 1.25
+	}
+}
