@@ -19,7 +19,8 @@
 			"nowiki",
 			"kbd",
 			"syntaxhighlight",
-			"plantuml"
+			"plantuml",
+			"svg"
 		],
 		"ignoreHtmlClass": [
 			"tex2jax_ignore",
