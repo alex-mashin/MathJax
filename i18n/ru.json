@@ -2,6 +2,7 @@
 	"mathjax-desc": "Позволяет вставлять в статьи формулы в формате [[TeX]] и [[MathML]], отрисовываемые [[MathJax]]",
 	"mathjax-broken-tex": "Не удалось преобразовать TeX в MML с помощью серверного MathJax: ошибка: <pre>$1</pre>",
 
+	"mathjax-macro-diag": "\\operatorname{diag}",
 	"mathjax-macro-tan": "\\operatorname{tg}",
 	"mathjax-macro-tg": "\\operatorname{tg}",
 	"mathjax-macro-cot": "\\operatorname{ctg}",

@@ -89,6 +89,7 @@
 			"exist": "\\exists",
 			"empty": "\\emptyset",
 			"P": "\\mbox{P}",
+			"diag": "\\operatorname{diag}",			
 			"tan": "\\operatorname{tg}",
 			"tg": "\\operatorname{tg}",
 			"cot": "\\operatorname{ctg}",

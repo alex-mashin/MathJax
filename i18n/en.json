@@ -32,6 +32,7 @@
 	"mathjax-macro-empty" : "\\emptyset",
 	"mathjax-macro-P"     : "\\mbox{P}",
 
+	"mathjax-macro-diag": "\\operatorname{diag}",
 	"mathjax-macro-tg": "\\operatorname{tan}",
 	"mathjax-macro-ctg": "\\operatorname{cot}",
 	"mathjax-macro-cosec": "\\operatorname{csc}",
