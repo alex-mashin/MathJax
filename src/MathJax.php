@@ -642,11 +642,16 @@ class MathJax {
 			$cache->makeGlobalKey( __CLASS__, 'MathJax version' ),
 			3600,
 			static function () {
+				$command =  Shell::command(
+					explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' )
+				);
+				if ( method_exists( $command, 'disableNetwork' ) ) {
+					$command = $command->disableNetwork();
+				} else {
+					$command = $command->restrict( Shell::NO_NETWORK );
+				}
 				try {
-					$result = Shell::command(
-						explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' )
-					)->disableNetwork()
-					 ->execute();
+					$result = $command->execute();
 				} catch ( Exception $e ) {
 					return null;
 				}
