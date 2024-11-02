@@ -2,13 +2,14 @@
 
 /*************************************************************************
  *
- *  Based on https://github.com/mathjax/MathJax-demos-node/blob/master/simple/tex2mml-page
+ *  Based on
+ *  https://github.com/mathjax/MathJax-demos-node/blob/master/simple/tex2mml-page
  *
  *  Uses MathJax v3 to convert all TeX in an HTML document to MathML.
  *
  * ----------------------------------------------------------------------
  *
- *  Copyright (c) 2020 The MathJax Consortium, 2021 Alexander Mashin
+ *  Copyright (c) 2020 The MathJax Consortium, 2021-2024 Alexander Mashin
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -29,8 +30,8 @@ var argv = require('yargs')
 	.usage('$0 [options] "math"')
 	.options({
 		dist: {
-			boolean: true,
-			default: false,
+			"boolean": true,
+			"default": false,
 			describe: 'true to use webpacked version, false to use MathJax source files'
 		},
 		conf: {
@@ -61,7 +62,7 @@ const fs = require('fs');
 const input = fs.readFileSync(argv._[0] === '-' ? 0 : argv._[0], 'utf-8' );
 
 // Read the configuration file:
-let config = JSON.parse(fs.readFileSync(argv.conf, 'utf8'));
+let config = JSON.parse(process.env.MJCONF ?? fs.readFileSync(argv.conf, 'utf8'));
 config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
 config.loader.source = argv.dist ? {} : require('mathjax-full/components/src/source.js').source;
 config.options.renderActions = {
