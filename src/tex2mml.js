@@ -62,7 +62,7 @@ const fs = require( 'fs' );
 let input = fs.readFileSync(argv._[0] === '-' ? 0 : argv._[0], 'utf-8' );
 
 // Extract configuration:
-const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+)<\s*\/script\s*>(.*)$/.exec( input );
+const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+)<\s*\/script\s*>(.*)$/s.exec( input );
 let config = null;
 if ( parsed ) {
 	config = JSON.parse( parsed[1] );
