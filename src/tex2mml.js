@@ -25,27 +25,27 @@
  */
 
 //  Get the command-line arguments
-var argv = require('yargs')
-	.demand(0).strict()
-	.usage('$0 [options] "math"')
-	.options({
+var argv = require( 'yargs' )
+	.demand( 0 ).strict()
+	.usage( '$0 [options] "math"' )
+	.options( {
 		dist: {
-			"boolean": true,
-			"default": false,
+			'boolean': true,
+			'default': false,
 			describe: 'true to use webpacked version, false to use MathJax source files'
 		},
 		conf: {
 			describe: 'Path to JSON file containing TeX configuration'
 		}
-	})
+	} )
 	.argv;
 
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
-function actionMML(math, doc) {
+const actionMML = function( math, doc ) {
 	const adaptor = doc.adaptor;
 	const mml = MathJax.startup
-		.toMML(math.root)
+		.toMML( math.root )
 		.replace(
 			/^<math(.+?)>(.+?)<\/math>$/su,
 			'<math$1>\n<semantics><mrow>$2</mrow>' +
@@ -53,30 +53,36 @@ function actionMML(math, doc) {
 			math.math.replace(/&/g, '&#38;') +
 			'</annotation>\n</semantics>\n</math>'
 		);
-	math.typesetRoot = adaptor.firstChild(adaptor.body(adaptor.parse(mml, 'text/html')));
-}
+	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
+};
 
-const fs = require('fs');
+const fs = require( 'fs' );
 
 //  Read the HTML file or stdin:
-const input = fs.readFileSync(argv._[0] === '-' ? 0 : argv._[0], 'utf-8' );
+let input = fs.readFileSync(argv._[0] === '-' ? 0 : argv._[0], 'utf-8' );
 
-// Read the configuration file:
-let config = JSON.parse(process.env.MJCONF ?? fs.readFileSync(argv.conf, 'utf8'));
+// Extract configuration:
+const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+)<\s*\/script\s*>(.*)$/.exec( input );
+let config = null;
+if ( parsed ) {
+	config = JSON.parse( parsed[1] );
+	input = parsed[2];
+} else {
+	// Read the configuration file:
+	config = JSON.parse( fs.readFileSync( argv.conf, 'utf8' ) );
+}
 config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
-config.loader.source = argv.dist ? {} : require('mathjax-full/components/src/source.js').source;
+config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
 config.options.renderActions = {
-	typeset: [ 150, (doc) => { for (const math of doc.math) actionMML(math, doc); } ]
+	typeset: [ 150, ( doc ) => { for ( const math of doc.math ) actionMML( math, doc ); } ]
 };
 delete config.options.menuOptions;
-config.startup = {
-	document: input
-};
+config.startup = { document: input };
 
 // Load MathJax and initialize MathJax and typeset the given math
-require('mathjax-full').init(config).then((MathJax) => {
+require( 'mathjax-full' ).init( config ).then( ( MathJax ) => {
 	const adaptor = MathJax.startup.adaptor;
 	const html = MathJax.startup.document;
 	html.render();
-	console.log(adaptor.outerHTML(adaptor.root(html.document)));
-}).catch(err => console.error(err));
+	console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+} ).catch( err => console.error( err ) );
