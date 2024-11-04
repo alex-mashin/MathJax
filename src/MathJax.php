@@ -1,9 +1,20 @@
 <?php
+namespace MediaWiki\Extensions\MathJax;
+
+use Exception;
+use MediaWiki\Hook\ParserFirstCallInitHook;
+use MediaWiki\Hook\ParserBeforeInternalParseHook;
+use MediaWiki\Hook\InternalParseBeforeLinksHook;
+use MediaWiki\Hook\BeforePageDisplayHook;
+use MediaWiki\Hook\SoftwareInfoHook;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Shell\Shell;
-use Wikimedia\AtEase\AtEase;
-use function MediaWiki\restoreWarnings;
-use function MediaWiki\suppressWarnings;
+use MWException;
+use OutputPage;
+use Parser;
+use PPFrame;
+use Skin;
+use StripState;
+use Title;
 
 /**
  * This class encapsulates code needed to render mathematical formulae in wikitext.
@@ -17,35 +28,48 @@ use function MediaWiki\suppressWarnings;
  * @todo: access node.js as a service.
  * @todo: feed to node.js only the needed macro.
  */
-class MathJax {
+class MathJax
+	implements
+		ParserFirstCallInitHook,
+		ParserBeforeInternalParseHook,
+		InternalParseBeforeLinksHook,
+		BeforePageDisplayHook,
+		SoftwareInfoHook
+{
+	/** @const int VERSION_TTL Number of seconds that software version is to be cached. */
+	private const VERSION_TTL = 3600; // one hour.
+
+	/** @var ?Engines\Base $engine MathJax engine that will convert TeX to MML. */
+	private static ?Engines\Base $engine = null;
 	/** @var bool $mathJaxNeeded Page has formulas. */
-	private static $mathJaxNeeded = false;
+	private static bool $mathJaxNeeded = false;
 	/** @var bool $alreadyAttached Prevent multiple attaching. */
-	private static $alreadyAttached = false;
+	private static bool $alreadyAttached = false;
 	/** @var string $mathRegex A regular expression to check if <math> tags are present. */
-	private static $mathRegex;
-	/** @var array $blockRegexes Regexps with replacements to search for : <math>...</math> and {{#tag:math|...}}. */
-	private static $blockRegexes;
+	private static string $mathRegex = '';
+	/** @var string[] $blockRegexes Regexps with replacements to search for : <math>...</math> and {{#tag:math|...}}. */
+	private static array $blockRegexes = [];
 	/** @var string $envRegex A regular expression for searching for equations outside <math>. */
-	private static $envRegex;
+	private static string $envRegex = '';
 	/** @var string $noMathInTheseTags A regex to find HTML tags that cannot contain maths and screen them. */
-	private static $noMathInTheseTags;
-	/** @var array $tagLike TeX commands that are somewhat like HTML tags. */
-	private static $tagLike = [ '>[^<>]*>[^<>]*>', '<[^<>]*<[^<>]*<' ];
+	private static string $noMathInTheseTags = '';
+	/** @var string[] $tagLike TeX commands that are somewhat like HTML tags. */
+	private static array $tagLike = [ '>[^<>]*>[^<>]*>', '<[^<>]*<[^<>]*<' ];
 	/** @var string $mjConf Complete (with macros) configuration for MathJax as JSON. */
-	private static $mjConf;
+	private static string $mjConf = '';
 	/** @var int $screenCounter A counter for the screen() method. */
-	private static $screenCounter = 0;
+	private static int $screenCounter = 0;
 
 	/**
-	 * Entry point 1. Hooked by "ParserFirstCallInit": "MathJax::setup" in extension.json.
+	 * Entry point 1. Hooked by "ParserFirstCallInit": "MathJaxHooks" in extension.json.
 	 *
 	 * Make the parser aware of <math> tag on initialisation, do some other initialisations.
 	 *
 	 * @param Parser $parser The parser object.
 	 * @return bool Return true on success.
+	 * @throws MWException
 	 */
-	public static function setup( Parser $parser ): bool {
+	public function onParserFirstCallInit( $parser ): bool {
 		// When the parser sees the <math> tag, it executes
 		// the self::renderMath function:
 		global $wgmjMathTag;
@@ -102,7 +126,7 @@ class MathJax {
 	}
 
 	/**
-	 * Entry point 2. Hooked by "ParserBeforeInternalParse": "MathJax::blockDisplay" in extension.json.
+	 * Entry point 2. Hooked by "ParserBeforeInternalParse": "MathJaxHooks" in extension.json.
 	 *
 	 * Replace :<math>...</math>  with <math display="block">...</math>,
 	 *         :{{#tag:math|...}} with {{#tag:math|...|display="block"}}.
@@ -110,11 +134,11 @@ class MathJax {
 	 *
 	 * @param Parser $parser The Parser object.
 	 * @param string $text The wikitext to process.
-	 * @param StripState $strip_state
+	 * @param StripState $_
 	 * @return bool Return true on success.
 	 */
-	public static function blockDisplay( Parser $parser, string &$text, StripState $strip_state ): bool {
-		$title = $parser->getTitle();
+	public function onParserBeforeInternalParse( $parser, &$text, $_ ): bool {
+		$title = $parser->{ method_exists( $parser, 'getPage' ) ? 'getPage' : 'getTitle' }();
 		if ( $title ) {
 			$namespace = $title->getNamespace();
 			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
@@ -130,7 +154,7 @@ class MathJax {
 	}
 
 	/**
-	 * Entry point 3. Hooked by "InternalParseBeforeLinks": "MathJax::freeEnvironments" in extension.json.
+	 * Entry point 3. Hooked by "InternalParseBeforeLinks": "MathJaxHooks" in extension.json.
 	 *
 	 * Wikify free TeX environments \begin{...}...\end{...}, then hide them.
 	 *
@@ -138,20 +162,20 @@ class MathJax {
 	 * @param string $text The wikitext to process.
 	 * @return bool Return true on success.
 	 */
-	public static function freeEnvironments( Parser $parser, string &$text ): bool {
-		$title = $parser->getTitle();
+	public function onInternalParseBeforeLinks( $parser, &$text, $_ ): bool {
+		$title = $parser->{ method_exists( $parser, 'getPage' ) ? 'getPage' : 'getTitle' }();
 		if ( !$title ) {
 			return true;
 		}
 		$namespace = $title->getNamespace();
-		if ( $namespace < 0 && $namespace === NS_MEDIAWIKI ) {
+		if ( $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
 			return true;
 		}
 		$counter = 0;
 		// Process TeX environments outside <math>:
 		$text = preg_replace_callback(
 			self::envRegex(),
-			function ( array $matches ) use ( $parser, &$counter ): string {
+			static function ( array $matches ) use ( $parser, &$counter ): string {
 				// Set flag: MathJax needed:
 				self::$mathJaxNeeded = true;
 				// Prepare free math just as math within <math></math> tag, then replace it with a strip item:
@@ -225,12 +249,12 @@ class MathJax {
 	 *
 	 * @param string $input The content of the <math> tag.
 	 * @param array $args The attributes of the <math> tag.
-	 * @param Parser $parser The parser object.
-	 * @param PPFrame $frame The frame object.
+	 * @param Parser $_ The parser object.
+	 * @param PPFrame $__ The frame object.
 	 *
 	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
-	public static function renderMath( string $input, array $args, Parser $parser, PPFrame $frame ): array {
+	public static function renderMath( string $input, array $args, Parser $_, PPFrame $__ ): array {
 		return self::renderTag( $input, $args );
 	}
 
@@ -241,116 +265,52 @@ class MathJax {
 	 *
 	 * @param string $input The content of the <chem> tag.
 	 * @param array $args The attributes of the <chem> tag.
-	 * @param Parser $parser The parser object.
-	 * @param PPFrame $frame The frame object.
+	 * @param Parser $_ The parser object.
+	 * @param PPFrame $__e The frame object.
 	 *
 	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
-	public static function renderChem( string $input, array $args, Parser $parser, PPFrame $frame ): array {
-		return self::renderTag( '\ce{' . $input . '}', $args );
+	public static function renderChem( string $input, array $args, Parser $_, PPFrame $__ ): array {
+		return self::renderTag( "\ce{ $input }", $args );
 	}
 
 	/**
-	 * Entry point 5. Hooked by "BeforePageDisplay": "MathJax::processPage" in extension.json.
+	 * Entry point 5. Hooked by "BeforePageDisplay": "MathJaxHooks" in extension.json.
 	 *
 	 * Process TeX server-side, if configured.
 	 * Raise "Attach MathJax" flag, if needed.
 	 *
-	 * @param OutputPage $output The OutputPage object.
+	 * @param OutputPage $out The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
-	 * @return bool Return true on success.
+	 * @return void.
 	 */
-	public static function processPage( OutputPage &$output, Skin $skin ): bool {
-		$title = $output->getTitle();
+	public function onBeforePageDisplay( $out, $skin ): void {
+		$title = $out->getTitle();
 		if ( !$title ) {
-			return true;
+			return;
 		}
 		$namespace = $title->getNamespace();
-		if ( !$output->mBodytext || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
-			return true;
+		if ( !$out->mBodytext || $namespace < 0 || $namespace === NS_MEDIAWIKI ) {
+			return;
 		}
 
 		// <math> (already processed). Set flag: MathJax needed:
-		self::$mathJaxNeeded = self::$mathJaxNeeded
-							|| ( self::$mathRegex ? preg_match( self::$mathRegex, $output->mBodytext ) : false );
+		self::$mathJaxNeeded = self::$mathJaxNeeded || preg_match( self::$mathRegex, $out->mBodytext );
 
 		if ( self::$mathJaxNeeded ) {
 			// Process TeX server-side, if configured.
-			global $wgmjServerSide;
-			if ( $wgmjServerSide ) {
-				$output->mBodytext = self::allTex2mml( $output->mBodytext );
-			}
+			$lang = $skin->getLanguage()->getCode();
+			$out->mBodytext = self::engine()->tex2mml( $out->mBodytext, self::mjConf(), $lang );
+
+			// Add scripts, styles, etc.
+			self::engine()->processPage( $out, $skin );
 
 			// Attach MathJax JavaScript, if necessary:
 			global $wgmjClientSide;
 			if ( $wgmjClientSide ) {
-				self::attachMathJaxIfNotYet( $output, $skin );
-			} else {
-				if ( $wgmjServerSide ) {
-					$output->addInlineStyle( <<<'STYLE'
-						math {font-size: 150%;}
-						math>semantics>annotation {display:none;}
-					STYLE
-					);
-				}
+				self::attachMathJaxIfNotYet( $out, $skin );
 			}
-		}
-		return true;
-	}
-
-	/**
-	 * Convert all TeX formulae in $html to MathML.
-	 *
-	 * @param string $html HTML to find TeX formulae in.
-	 * @return string Processed HTML.
-	 */
-	private static function allTex2mml( string $html ): string {
-		$conf_file = sys_get_temp_dir() . '/MathJax.config.json';
-		if ( !file_exists( $conf_file ) ) {
-			file_put_contents( $conf_file, self::mjConf() );
-		}
-
-		// @todo as service.
-		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm '
-				 . __DIR__ . '/tex2mml.js --conf=' . $conf_file . ' --dist=1';
-		$shell = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
-			->environment( [ 'NODE_PATH' => __DIR__ . '/../node_modules' ] ) // MathJax installed locally.
-			->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
-		if ( strlen( $html ) >= 65536 /* hardcoded in Command::execute() */ ) {
-			// Create a temporary HTML file and pass its name to tex2mml.js:
-			$html_file = sys_get_temp_dir() . '/tex_' . md5( $html );
-			if ( !file_exists( $html_file ) ) {
-				file_put_contents( $html_file, $html );
-			}
-			$shell = $shell->params( $html_file );
-		} else {
-			// HTML is sent to the standard input:
-			$shell = $shell->params( '-' )->input( $html );
-		}
-		self::suppressWarnings();
-		try {
-			$result = $shell->execute();
-		} catch ( Exception $e ) {
-			$error = '<span class="error">'
-				. wfMessage( 'mathjax-broken-tex', $e->getMessage() )->inContentLanguage()->text()
-				. '</span>';
-			self::restoreWarnings();
-			return $error . $html;
-		} finally {
-			if ( $html_file ) {
-				unlink( $html_file );
-			}
-		}
-		self::restoreWarnings();
-
-		if ( $result->getExitCode() === 0 ) {
-			return $result->getStdout();
-		} else {
-			$error = '<span class="error">'
-				   . wfMessage( 'mathjax-broken-tex', $result->getStderr() )->inContentLanguage()->text()
-				   . '</span>';
-			return $error . $html;
 		}
 	}
 
@@ -360,41 +320,42 @@ class MathJax {
 	 * @param OutputPage $output The OutputPage object.
 	 * @param Skin $skin The Skin object.
 	 *
-	 * @return bool Return true on success.
+	 * @return void
 	 */
-	private static function attachMathJaxIfNotYet( OutputPage &$output, Skin $skin ): bool {
+	private static function attachMathJaxIfNotYet( OutputPage $output, Skin $skin ): void {
 		// Prevent multiple attaching:
 		if ( self::$alreadyAttached ) {
-			return true;
+			return;
 		}
-		// CDN or local:
-		global $wgmjServerSide, $wgmjUseCDN, $wgmjCDNDistribution, $wgExtensionAssetsPath, $wgmjLocalDistribution;
 		// Attaching scripts:
 		$jsonConfig = self::mjConf();
 		$output->addInlineScript( "window.MathJax = $jsonConfig;" );
-		$script = $wgmjServerSide ? 'mml-chtml.js' : 'tex-mml-chtml.js';
-		$lang = $skin->getLanguage()->getCode();
-		// Add CDN domain to CSP header:
-		global $wgCSPHeader;
-		if ( $wgmjUseCDN && $wgCSPHeader !== false ) {
-			$wgCSPHeader = is_array( $wgCSPHeader ) ? $wgCSPHeader : [];
+		global $wgmjUseCDN;
+		// CDN or local:
+		if ( $wgmjUseCDN ) {
+			// Add CDN domain to CSP header:
+			global $wgCSPHeader, $wgmjCDNDistribution;
 			$domain = parse_url( $wgmjCDNDistribution,  PHP_URL_HOST );
-			foreach ( [ 'script-src', 'default-src' ] as $src ) {
-				if ( !is_array( $wgCSPHeader[$src] ) ) {
-					$wgCSPHeader[$src] = [];
+			if ( $wgCSPHeader !== false ) {
+				$wgCSPHeader = is_array( $wgCSPHeader ) ? $wgCSPHeader : [];
+				foreach ( [ 'script-src', 'default-src' ] as $src ) {
+					if ( !is_array( $wgCSPHeader[$src] ) ) {
+						$wgCSPHeader[$src] = [];
+					}
+					if ( !in_array( $domain, $wgCSPHeader[$src], true ) ) {
+						$wgCSPHeader[$src][] = $domain;
+					}
 				}
-				if ( !in_array( $domain, $wgCSPHeader[$src], true ) ) {
-					$wgCSPHeader[$src][] = $domain;
-				}
-			} // -- foreach ( [ 'script-src', 'default-src' ] as $src )
+			}
+			$mathjax_domain = $wgmjCDNDistribution;
+		} else {
+			// No CDN:
+			$mathjax_domain = self::engine()->serverSideMathJaxDir();
 		}
-		$output->addScriptFile(
-			( $wgmjUseCDN ? $wgmjCDNDistribution : "$wgExtensionAssetsPath$wgmjLocalDistribution" )
-			. "/$script?locale=$lang"
-		);
+		$script = self::engine()->browserMathJaxScriptBasename();
+		$lang = $skin->getLanguage()->getCode();
+		$output->addScriptFile( "$mathjax_domain/$script?locale=$lang" );
 		self::$alreadyAttached = true;
-		// MathJax configuring and attachment complete.
-		return true;
 	}
 
 	/*
@@ -452,9 +413,9 @@ class MathJax {
 		// Replace article titles in href="" with their canonical URLs:
 		$ret = preg_replace_callback(
 			[
-				'/\<maction\s+actiontype\s*=\s*"tooltip"\s+'
-				. 'href\s*=\s*"(?!http)(.+?)"\s*\>\s*(.+?)\<\/maction\>/si' // href="..."
-				, '/\[\[(.+?)(?:\|(.*?))?\]\]/ui' // [[...]].
+				'/<maction\s+actiontype\s*=\s*"tooltip"\s+'
+				. 'href\s*=\s*"(?!http)(.+?)"\s*>\s*(.+?)<\/maction>/si' // href="..."
+				, '/\[\[(.+?)(?:\|(.*?))?]]/ui' // [[...]].
 			],
 			static function ( array $matches ): string {
 				$title = Title::newFromText( $matches[1] );
@@ -470,11 +431,11 @@ class MathJax {
 			$mml
 		);
 		global $wgmjMMLtagsAllowed;
-		static $mmlTagsAllowedGlued;
-		if ( !$mmlTagsAllowedGlued ) {
-			$mmlTagsAllowedGlued = '<' . implode( '><', $wgmjMMLtagsAllowed ) . '>';
+		static $mml_tags_allowed_glued;
+		if ( !$mml_tags_allowed_glued ) {
+			$mml_tags_allowed_glued = '<' . implode( '><', $wgmjMMLtagsAllowed ) . '>';
 		}
-		return strip_tags( $ret, $mmlTagsAllowedGlued ); // remove HTML.
+		return strip_tags( $ret, $mml_tags_allowed_glued ); // remove HTML.
 	}
 
 	/*
@@ -606,58 +567,35 @@ class MathJax {
 	}
 
 	/**
-	 * Suppress warnings absolutely.
+	 * TeX engine.
+	 * @return Engines\Base
 	 */
-	private static function suppressWarnings() {
-		if ( method_exists( AtEase::class, 'suppressWarnings' ) ) {
-			// MW >= 1.33
-			AtEase::suppressWarnings();
-		} else {
-			suppressWarnings();
+	private static function engine(): Engines\Base {
+		if ( !self::$engine ) {
+			// Initialise MathJax engine.
+			global $wgmjServerSide, $wgmjServiceUrl;
+			$class = __NAMESPACE__ . '\\Engines\\' . (
+				$wgmjServiceUrl ? 'Service' : (
+				$wgmjServerSide ? 'ServerSide'
+								: 'ClientSide'
+			) );
+			self::$engine = new $class();
 		}
+		return self::$engine;
 	}
 
 	/**
-	 *  Restore warnings.
-	 */
-	private static function restoreWarnings() {
-		if ( method_exists( AtEase::class, 'restoreWarnings' ) ) {
-			// MW >= 1.33
-			AtEase::restoreWarnings();
-		} else {
-			restoreWarnings();
-		}
-	}
-
-	/**
-	 * Entry point 6.
-	 *
+	 * Entry point 6. Hooked by "SoftwareInfo": "MathJaxHooks" in extension.json.
 	 * Register used MathJax version for Special:Version.
-	 *
 	 * @param array $software
 	 */
-	public static function register( array &$software ) {
+	public function onSoftwareInfo( &$software ) {
 		$cache = MediaWikiServices::getInstance()->getLocalServerObjectCache();
 		$software['[https://www.mathjax.org/ MathJax]'] = $cache->getWithSetCallback(
-			$cache->makeGlobalKey( __CLASS__, 'MathJax version' ),
-			3600,
-			static function () {
-				$command =  Shell::command(
-					explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . ' mathjax-full' )
-				);
-				if ( method_exists( $command, 'disableNetwork' ) ) {
-					$command = $command->disableNetwork();
-				} else {
-					$command = $command->restrict( Shell::NO_NETWORK );
-				}
-				try {
-					$result = $command->execute();
-				} catch ( Exception $e ) {
-					return null;
-				}
-				if ( $result->getExitCode() === 0 && preg_match( '/mathjax.+$/s', $result->getStdout(), $match ) ) {
-					return trim( $match[0] );
-				}
+			$cache->makeGlobalKey( get_class( self::engine() ), 'MathJax version' ),
+			self::VERSION_TTL,
+			static function (): ?string {
+				return self::engine()->version();
 			}
 		) ?: '(unknown version)';
 	}

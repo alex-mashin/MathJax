@@ -6,11 +6,11 @@
 		"based on a work by Mithgol the Webmaster"
 	],
 	"type": "parserhook",
-	"version": "2.1",
+	"version": "3.0",
 	"descriptionmsg": "mathjax-desc",
 	"url": "https://traditio.wiki/MathJax_for_MediaWiki",
 	"requires": {
-		"MediaWiki": ">= 1.25.0",
+		"MediaWiki": ">= 1.33",
 		"platform": {
 			"php": ">= 7.4"
 		}
@@ -20,16 +20,22 @@
 			"i18n"
 		]
 	},
-	"AutoloadClasses": {
-		"MathJax": "src/MathJax.php"
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extensions\\MathJax\\": "src/",
+		"MediaWiki\\Extensions\\MathJax\\Engines\\": "src/engines/"
 	},
 	"Hooks": {
-		"ParserFirstCallInit":              "MathJax::setup",
-		"ParserBeforeInternalParse":        "MathJax::blockDisplay",
-		"InternalParseBeforeLinks":         "MathJax::freeEnvironments",
-		"BeforePageDisplay":                "MathJax::processPage",
-		"ScribuntoExternalLibraryPaths":    "MathJax::registerLua",
-		"SoftwareInfo":                     "MathJax::register"
+		"ParserFirstCallInit":              "MathJaxHooks",
+		"ParserBeforeInternalParse":        "MathJaxHooks",
+		"InternalParseBeforeLinks":         "MathJaxHooks",
+		"BeforePageDisplay":                "MathJaxHooks",
+		"ScribuntoExternalLibraryPaths":    "MediaWiki\\Extensions\\MathJax\\MathJax::registerLua",
+		"SoftwareInfo":                     "MathJaxHooks"
+	},
+	"HookHandlers": {
+		"MathJaxHooks": {
+			"class": "MediaWiki\\Extensions\\MathJax\\MathJax"
+		}
 	},
 	"config_prefix": "wgmj",
 	"config": {
@@ -72,6 +78,18 @@
 		"ServerSide": {
 			"value": true,
 			"description": "Whether TeX formulæ should be converted from TeX to MML server-side."
+		},
+		"ServiceUrl": {
+			"value": false,
+			"description": "URL of the remote or containerised MathJax service."
+		},
+		"ServiceExternalUrl": {
+			"value": "/js/mathjax",
+			"description": "Relative URL of the remote or containerised MathJax service as served by the frontend."
+		},
+		"ServiceVersionUrl": {
+			"value": "http://mathjax/cgi-bin/version.sh",
+			"description": "URL that serves remote MathJax version"
 		},
 		"MathJax": {
 			"value": {

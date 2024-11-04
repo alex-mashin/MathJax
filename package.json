@@ -6,8 +6,8 @@
 		"test": "grunt test"
 	},
 	"dependencies": {
-		"mathjax-full": "^3.2.0",
-		"esm": "^3.2.25",
+		"mathjax-full": "*",
+		"esm": "*",
 		"yargs": "*"
 	},
 	"devDependencies": {
