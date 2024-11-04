@@ -39,9 +39,10 @@ class Service extends Base {
 			return $req->getContent();
 		}
 
-		$error = '<span class="error">'
-			. wfMessage( 'mathjax-broken-tex', $req->getContent() )->inContentLanguage()->text()
-			. '</span>';
+		$error = '<span class="error">' . wfMessage(
+				'mathjax-broken-tex',
+				(string)$status . '<br />' . $req->getContent()
+			)->inContentLanguage()->text() . '</span>';
 		return $error . $html;
 
 	}
