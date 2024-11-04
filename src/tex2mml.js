@@ -1,4 +1,5 @@
 #! /usr/bin/env -S node
+"use strict";
 
 /*************************************************************************
  *
@@ -42,7 +43,7 @@ var argv = require( 'yargs' )
 
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
-const actionMML = function( math, doc ) {
+function actionMML( math, doc ) {
 	const adaptor = doc.adaptor;
 	const mml = MathJax.startup
 		.toMML( math.root )
@@ -54,35 +55,48 @@ const actionMML = function( math, doc ) {
 			'</annotation>\n</semantics>\n</math>'
 		);
 	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
-};
-
-const fs = require( 'fs' );
-
-//  Read the HTML file or stdin:
-let input = fs.readFileSync(argv._[0] === '-' ? 0 : argv._[0], 'utf-8' );
+}
 
 // Extract configuration:
-const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+)<\s*\/script\s*>(.*)$/s.exec( input );
-let config = null;
-if ( parsed ) {
-	config = JSON.parse( parsed[1] );
-	input = parsed[2];
-} else {
-	// Read the configuration file:
-	config = JSON.parse( fs.readFileSync( argv.conf, 'utf8' ) );
+function makeConfig( input, conf ) {
+	const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+?)<\s*\/script\s*>(.*)$/s.exec( input );
+	let config = null;
+	if ( parsed ) {
+		config = JSON.parse( parsed[1] );
+		input = parsed[2];
+	} else {
+		// Read the configuration file:
+		config = JSON.parse( fs.readFileSync( conf, 'utf8' ) );
+	}
+	config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
+	config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
+	config.options.renderActions = {
+		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
+			actionMML( math, doc );
+		} } ]
+	};
+	delete config.options.menuOptions;
+	config.startup = { document: input };
+	return config;
 }
-config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
-config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
-config.options.renderActions = {
-	typeset: [ 150, ( doc ) => { for ( const math of doc.math ) actionMML( math, doc ); } ]
-};
-delete config.options.menuOptions;
-config.startup = { document: input };
 
-// Load MathJax and initialize MathJax and typeset the given math
-require( 'mathjax-full' ).init( config ).then( ( MathJax ) => {
-	const adaptor = MathJax.startup.adaptor;
-	const html = MathJax.startup.document;
-	html.render();
-	console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
-} ).catch( err => console.error( err ) );
+const fs = require( 'fs' );
+//  Read the HTML file or stdin:
+let input = null;
+fs.readFile( argv._[0] === '-' ? 0 : argv._[0], 'utf-8', ( err, data ) => {
+	if ( err ) {
+		console.error( err );
+		return;
+	}
+	input = data.toString();
+
+	const config = makeConfig( input, argv.conf );
+	// Load MathJax and initialize MathJax and typeset the given math
+	require( 'mathjax-full' ).init( config ).then( ( MathJax ) => {
+		const adaptor = MathJax.startup.adaptor;
+		const html = MathJax.startup.document;
+		html.render();
+		console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+	} ).catch( err => console.error( err ) );
+} );
+
