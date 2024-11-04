@@ -301,6 +301,8 @@ class MathJax
 		if ( self::$mathJaxNeeded ) {
 			// Process TeX server-side, if configured.
 			$lang = $skin->getLanguage()->getCode();
+
+			// There is no need to cache this: already cached by the parser cache.
 			$out->mBodytext = self::engine()->tex2mml( $out->mBodytext, self::mjConf(), $lang );
 
 			// Add scripts, styles, etc.

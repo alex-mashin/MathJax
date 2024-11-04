@@ -26,8 +26,8 @@ class ServerSide extends Base {
 		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm '
 			. __DIR__ . '/../tex2mml.js --conf=' . $conf_file . ' --dist=1';
 		$shell = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
-		->environment( [ 'NODE_PATH' => __DIR__ . '/../../node_modules' ] ) // MathJax installed locally.
-		->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
+			->environment( [ 'NODE_PATH' => __DIR__ . '/../../node_modules' ] ) // MathJax installed locally.
+			->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
 		$html_file = null;
 		if ( strlen( $html ) >= 65536 /* hardcoded in Command::execute() */ ) {
 			// Create a temporary HTML file and pass its name to tex2mml.js:
