@@ -81,14 +81,14 @@ class MathJax
 		$parser->setHook( $wgmjChemTag, __CLASS__ . '::renderChem' );
 
 		// Initialise regexes:
-		$tag = preg_quote( $wgmjMathTag, '/' );
+		$tag = preg_quote( $wgmjMathTag, '/' ) . '|' . preg_quote( $wgmjChemTag, '/' );
 		self::$blockRegexes = [
 			// : <math>...</math> -> <math display="block">...</math>.
-			'/(?:^|\n)\s*(?::+\s*)+<' . $tag . '>(.+?)<\/' . $tag . '>[  ]*([.,:;]?)/si'
-			=> "\n<" . $wgmjMathTag . ' display="block">$1$2</' . $wgmjMathTag . '>',
+			'/(?:^|\n)\s*(?::+\s*)+<(' . $tag . ')>(.+?)<\/\1>[  ]*([.,:;]?)/si'
+			=> "\n" . '<$1 display="block">$2$3</$1>',
 			// : {{#tag:math|...}} -> {{#tag:math|display="block"|...}}.
-			'/(?:^|\n)\s*(?::+\s*)+{{#tag:' . $tag . '\|(.+?)}}[  ]*([.,:;]?)/si'
-			=> "\n{{#tag:" . $wgmjMathTag . '|$1$2|display="block"}}'
+			'/(?:^|\n)\s*(?::+\s*)+\{\{\#tag:(' . $tag . ')\|(.+?)}}[  ]*([.,:;]?)/si'
+			=> "\n" . '{{#tag:$1|$2$3|display="block"}}'
 		];
 		global $wgmjMathJax;
 		$tex = $wgmjMathJax['tex'];
@@ -101,7 +101,7 @@ class MathJax
 			. '.+?'
 			. preg_quote( $tex['displayMath'][0][1], '/' )
 			. '|'
-			. "<$tag"
+			. "<($tag)"
 			. ')/';
 		// Regex to screen tags that cannot contain maths:
 		$any_tag = implode( '|', $wgmjMathJax['options']['skipHtmlTags'] );
