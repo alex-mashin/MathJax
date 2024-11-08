@@ -8,7 +8,6 @@ use MediaWiki\Shell\Shell;
 use MediaWiki\ShellDisabledError;
 use OutputPage;
 use Skin;
-use Wikimedia\AtEase\AtEase;
 
 /**
  * Class for math engine using MathJax installed locally to the MediaWiki server.
@@ -17,7 +16,7 @@ class ServerSide extends Base {
 	/**
 	 * @inheritDoc
 	 */
-	function tex2mml( string $html, string $config, string $lang ): string {
+	public function tex2mml( string $html, string $config, string $lang ): string {
 		$conf_file = sys_get_temp_dir() . '/MathJax.config.json';
 		if ( !file_exists( $conf_file ) ) {
 			file_put_contents( $conf_file, $config );
@@ -70,12 +69,11 @@ class ServerSide extends Base {
 			. wfMessage( 'mathjax-broken-tex', $result->getStderr() )->inContentLanguage()->text()
 			. '</span>';
 		return $error . $html;
-
 	}
 
 	/**
 	 * Add what is needed to the wiki page.
-	 * @TODO: add $wgmjStyle.
+	 * @todo add $wgmjStyle.
 	 * @param OutputPage $out
 	 * @param Skin $skin
 	 * @return void
@@ -100,7 +98,7 @@ class ServerSide extends Base {
 	 * @return string|null
 	 */
 	public static function serverSideMathJaxDir(): ?string {
-		global $IP, $wgExtensionAssetsPath, $wgmjLocalDistribution;
+		global $wgExtensionAssetsPath, $wgmjLocalDistribution;
 		return "$wgExtensionAssetsPath$wgmjLocalDistribution";
 	}
 
@@ -108,8 +106,8 @@ class ServerSide extends Base {
 	 * MathJax version used by Math engine.
 	 * @return string|null
 	 */
-	function version(): ?string {
-		$command =  Shell::command(
+	public function version(): ?string {
+		$command = Shell::command(
 			explode( ' ', 'npm list -l --prefix ' . dirname( __DIR__ ) . '/.. mathjax-full' )
 		);
 		$command = method_exists( $command, 'disableNetwork' )

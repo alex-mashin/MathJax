@@ -18,7 +18,7 @@ class ClientSide extends Base {
 
 	/**
 	 * Add what is needed to the wiki page.
-	 * @TODO: add $wgmjStyle.
+	 * @todo add $wgmjStyle.
 	 * @param OutputPage $out
 	 * @param Skin $skin
 	 * @return void
@@ -49,7 +49,7 @@ class ClientSide extends Base {
 	 * MathJax version used by Math engine.
 	 * @return string|null
 	 */
-	function version(): ?string {
+	public function version(): ?string {
 		return null;
 	}
 }

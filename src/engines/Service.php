@@ -4,10 +4,8 @@ namespace MediaWiki\Extensions\MathJax\Engines;
 
 use Exception;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Shell\Shell;
 use OutputPage;
 use Skin;
-use Wikimedia\AtEase\AtEase;
 
 /**
  * Class for math engine using MathJax installed remotely or in a container.
@@ -16,7 +14,7 @@ class Service extends Base {
 	/**
 	 * @inheritDoc
 	 */
-	function tex2mml( string $html, string $config, string $lang ): string {
+	public function tex2mml( string $html, string $config, string $lang ): string {
 		global $wgmjServiceUrl;
 		$url = "$wgmjServiceUrl?config=yes&display=inline&lang=$lang";
 		// Create an HTTP request object.
@@ -44,12 +42,11 @@ class Service extends Base {
 				(string)$status . '<br />' . $req->getContent()
 			)->inContentLanguage()->text() . '</span>';
 		return $error . $html;
-
 	}
 
 	/**
 	 * Add what is needed to the wiki page.
-	 * @TODO: add $wgmjStyle.
+	 * @todo add $wgmjStyle.
 	 * @param OutputPage $out
 	 * @param Skin $skin
 	 * @return void
@@ -82,7 +79,7 @@ class Service extends Base {
 	 * MathJax version used by Math engine.
 	 * @return string|null
 	 */
-	function version(): ?string {
+	public function version(): ?string {
 		global $wgmjServiceVersionUrl;
 		$factory = MediaWikiServices::getInstance()->getHttpRequestFactory();
 		$req = $factory->create( $wgmjServiceVersionUrl );

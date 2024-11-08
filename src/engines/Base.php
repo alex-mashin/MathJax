@@ -19,7 +19,7 @@ abstract class Base {
 
 	/**
 	 * Add what is needed to the wiki page.
-	 * @TODO: add $wgmjStyle.
+	 * @todo add $wgmjStyle.
 	 * @param OutputPage $out
 	 * @param Skin $skin
 	 * @return void
@@ -42,7 +42,7 @@ abstract class Base {
 	 * MathJax version used by Math engine.
 	 * @return string|null
 	 */
-	abstract function version(): ?string;
+	abstract public function version(): ?string;
 
 	/**
 	 * Suppress warnings absolutely.

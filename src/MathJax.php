@@ -2,10 +2,10 @@
 namespace MediaWiki\Extensions\MathJax;
 
 use Exception;
-use MediaWiki\Hook\ParserFirstCallInitHook;
-use MediaWiki\Hook\ParserBeforeInternalParseHook;
-use MediaWiki\Hook\InternalParseBeforeLinksHook;
 use MediaWiki\Hook\BeforePageDisplayHook;
+use MediaWiki\Hook\InternalParseBeforeLinksHook;
+use MediaWiki\Hook\ParserBeforeInternalParseHook;
+use MediaWiki\Hook\ParserFirstCallInitHook;
 use MediaWiki\Hook\SoftwareInfoHook;
 use MediaWiki\MediaWikiServices;
 use MWException;
@@ -28,18 +28,17 @@ use Title;
  * @todo: access node.js as a service.
  * @todo: feed to node.js only the needed macro.
  */
-class MathJax
-	implements
-		ParserFirstCallInitHook,
-		ParserBeforeInternalParseHook,
-		InternalParseBeforeLinksHook,
-		BeforePageDisplayHook,
-		SoftwareInfoHook
+class MathJax implements
+	ParserFirstCallInitHook,
+	ParserBeforeInternalParseHook,
+	InternalParseBeforeLinksHook,
+	BeforePageDisplayHook,
+	SoftwareInfoHook
 {
 	/** @const int VERSION_TTL Number of seconds that software version is to be cached. */
 	private const VERSION_TTL = 3600; // one hour.
 
-	/** @var ?Engines\Base $engine MathJax engine that will convert TeX to MML. */
+	/** @var Engines\Base|null $engine Server-side MathJax engine. */
 	private static ?Engines\Base $engine = null;
 	/** @var bool $mathJaxNeeded Page has formulas. */
 	private static bool $mathJaxNeeded = false;
@@ -160,6 +159,7 @@ class MathJax
 	 *
 	 * @param Parser $parser The Parser object.
 	 * @param string $text The wikitext to process.
+	 * @param StripState $_ Not used.
 	 * @return bool Return true on success.
 	 */
 	public function onInternalParseBeforeLinks( $parser, &$text, $_ ): bool {
@@ -249,8 +249,8 @@ class MathJax
 	 *
 	 * @param string $input The content of the <math> tag.
 	 * @param array $args The attributes of the <math> tag.
-	 * @param Parser $_ The parser object.
-	 * @param PPFrame $__ The frame object.
+	 * @param Parser $_ The parser object (not used).
+	 * @param PPFrame $__ The frame object (not used).
 	 *
 	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
@@ -266,7 +266,7 @@ class MathJax
 	 * @param string $input The content of the <chem> tag.
 	 * @param array $args The attributes of the <chem> tag.
 	 * @param Parser $_ The parser object.
-	 * @param PPFrame $__e The frame object.
+	 * @param PPFrame $__ The frame object.
 	 *
 	 * @return array The resulting [ '(markup)', 'markerType' => 'nowiki' ] array.
 	 */
