@@ -44,6 +44,9 @@
 	"mathjax-macro-ge": "\\geqslant",
 	"mathjax-macro-geq": "\\geqslant",
 
+	"mathjax-macro-sgn": "\\operatorname{sgn}",
+	"mathjax-macro-sign": "\\operatorname{sgn}",
+
 	"mathjax-page-sin": "Синус",
 	"mathjax-page-cos": "Косинус",
 	"mathjax-page-tan": "Тангенс",
