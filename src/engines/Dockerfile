@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Alexander Mashin alex_mashin@list.ru
-LABEL description="Universal image for dockerising applications as HTTP CGI servers. To be used with MediaWiki extension External Data and MathJax"
+LABEL description="Universal image for dockerising applications as HTTP CGI servers. To be used with MediaWiki extension External Data"
 LABEL version="0.1"
 
 # Get busybox httpd:
@@ -111,6 +111,7 @@ WGET
 
 ARG SRC
 ARG GIT
+ARG BRANCH=master
 ARG SRC_LANG=C
 RUN <<-SRC
 	set -ex && \
@@ -127,7 +128,7 @@ RUN <<-SRC
 		mkdir -p /usr/local/bin && mkdir -p /src && cd /src && \
 		if [ ! -z "$GIT" ]; then \
 			for URL in $GIT; do \
-				git clone --single-branch --branch=master "$URL"; \
+				git clone --single-branch --branch="$BRANCH" "$URL"; \
 			done; \
 		else \
 			if [ ! -z "$SRC" ]; then \
@@ -283,7 +284,7 @@ COPY --chmod=777 <<-CGI /www/cgi-bin/$CGI
 	https://oldforum.puppylinux.com/viewtopic.php?t=115252
 	'
 
- 	source /usr/local/bin/cgi_functions.sh
+	source /usr/local/bin/cgi_functions.sh
 
 	# Parse query strings, set variables:
 	parse_query "\${QUERY_STRING:-}"

@@ -468,8 +468,11 @@ class MathJax implements
 	private static function mjConf(): string {
 		if ( !self::$mjConf ) {
 			global $wgmjMathJax;
-			if ( !isset( $wgmjMathJax['tex']['macros'] ) || count( $wgmjMathJax['tex']['macros'] ) === 0 ) {
+			if ( count( $wgmjMathJax['tex']['macros'] ?? [] ) === 0 ) {
 				$wgmjMathJax['tex']['macros'] = self::texMacros();
+			}
+			if ( count( $wgmjMathJax['tex']['replacements'] ?? [] ) === 0 ) {
+				$wgmjMathJax['tex']['replacements'] = self::texReplacements( $wgmjMathJax['tex']['macros'] );
 			}
 			try {
 				self::$mjConf = json_encode( $wgmjMathJax, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT );
@@ -500,13 +503,32 @@ class MathJax implements
 		if ( $wgmjAddWikilinks ) {
 			foreach ( preg_split( '/\s*,\s*/', wfMessage( 'mathjax-pages' )->inContentLanguage()->text() ) as $link ) {
 				$page = wfMessage( "mathjax-page-$link" )->inContentLanguage();
-				if ( $page->exists() ) {
-					$macros[$link] =
-						self::texHyperlink( $page->text(), $macros[$link] ?? '\\operatorname{' . $link . '}' );
+				if ( $macros[$link] ?? null && $page->exists() ) {
+					$macros[$link] = self::texHyperlink( $page->text(), $macros[$link] );
 				}
 			}
 		}
 		return $macros;
+	}
+
+	/**
+	 * Prepare a list of non-macro URL injections into TeX.
+	 *
+	 * @param array $macros Already defined macros.
+	 * @return array An associative array of injections.
+	 */
+	private static function texReplacements( array $macros ): array {
+		$replacements = [];
+		global $wgmjAddWikilinks;
+		if ( $wgmjAddWikilinks ) {
+			foreach ( preg_split( '/\s*,\s*/', wfMessage( 'mathjax-pages' )->inContentLanguage()->text() ) as $link ) {
+				$page = wfMessage( "mathjax-page-$link" )->inContentLanguage();
+				if ( !( $macros[$link] ?? null ) && $page->exists() ) {
+					$replacements[$link] = self::texHyperlink( $page->text(), '\\' . $link );
+				}
+			}
+		}
+		return $replacements;
 	}
 
 	/**
