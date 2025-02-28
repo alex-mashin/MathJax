@@ -26,20 +26,18 @@
  */
 
 //  Get the command-line arguments
-var argv = require( 'yargs' )
-	.demand( 0 ).strict()
-	.usage( '$0 [options] "math"' )
-	.options( {
-		dist: {
-			'boolean': true,
-			'default': false,
-			describe: 'true to use webpacked version, false to use MathJax source files'
-		},
-		conf: {
-			describe: 'Path to JSON file containing TeX configuration'
-		}
-	} )
-	.argv;
+import { Command } from 'commander';
+const program = new Command();
+program
+	.name( 'tex2mml')
+	.description( 'Convert all TeX formulæ in HTML to MathML using MathJax' )
+	.version( '3.1' )
+	.argument( '<string>', 'file name to process or "_" to use standard input' )
+	.option( '--dist <path>', 'path to MathJax distribution' )
+	.option( '--conf <confguration>', 'MathJax configuration' )
+	.parse();
+const { dist, conf } = program.opts();
+const file = program.args[0];
 
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
