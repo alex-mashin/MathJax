@@ -68,7 +68,7 @@ function makeConfig( input, conf ) {
 		// Read the configuration file:
 		config = JSON.parse( fs.readFileSync( conf, 'utf8' ) );
 	}
-	config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
+	// config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
 	config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
 	config.options.renderActions = {
 		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
