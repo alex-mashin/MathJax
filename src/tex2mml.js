@@ -109,7 +109,11 @@ const makeConfig = ( input, conf, dist ) => {
 			config = JSON.parse( data );
 		} );
 	}
-	// config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
+	const ui = config.loader.load.indexOf( 'ui/safe' );
+	if ( ui > -1 ) {
+		config.loader.load.splice( ui, 1 );
+		config.loader.load.push( 'adaptors/liteDOM' );
+	}
 	if ( dist ) {
 		config.loader.source = {};
 	} else {
