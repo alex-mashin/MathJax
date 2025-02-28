@@ -52,6 +52,24 @@ const obj2map = ( obj ) => {
 	return map;
 };
 
+/**
+ * Mass replacement in a string.
+ */
+String.prototype.massReplace = function( map ) {
+	let replaced = this;
+	for ( const [search, replace] of map ) {
+		replaced = replaced.replace (search, replace);
+	}
+	return replaced;
+};
+
+/*
+ * A renderAction to take the place of typesetting.
+ *	It renders the output to MathML instead.
+ */
+
+let toMML = null;
+
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
 function actionMML( math, doc ) {
@@ -66,7 +84,7 @@ function actionMML( math, doc ) {
 			'</annotation>\n</semantics>\n</math>'
 		);
 	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
-}
+};
 
 import * as fs from 'fs';
 
