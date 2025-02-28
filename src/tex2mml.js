@@ -39,6 +39,19 @@ program
 const { dist, conf } = program.opts();
 const file = program.args[0];
 
+/**
+ * Cast object into a Map.
+ */
+const obj2map = ( obj ) => {
+	let map = new Map();
+	for ( const key in obj ) {
+		if ( obj.hasOwnProperty( key ) ) {
+			map.set( new RegExp( '\\\\' + key, 'g' ), obj[key] );
+		}
+	}
+	return map;
+};
+
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
 function actionMML( math, doc ) {
