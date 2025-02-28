@@ -55,46 +55,65 @@ function actionMML( math, doc ) {
 	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
 }
 
-// Extract configuration:
-function makeConfig( input, conf ) {
+import * as fs from 'fs';
+
+/*
+ * Extract configuration:
+ */
+const makeConfig = ( input, conf, dist ) => {
+	// Extract TeX configuration:
 	const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+?)<\s*\/script\s*>(.*)$/s.exec( input );
 	let config = null;
 	if ( parsed ) {
+		// Extract configuration from the input file:
 		config = JSON.parse( parsed[1] );
 		input = parsed[2];
 	} else {
 		// Read the configuration file:
-		config = JSON.parse( fs.readFileSync( conf, 'utf8' ) );
+		fs.readFile( conf, 'utf-8', ( err, data ) => {
+			if ( err ) {
+				console.error( 'Could not read configuration file ' + conf + ': ' + err );
+				return;
+			}
+			config = JSON.parse( data );
+		} );
 	}
 	// config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
-	config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
+	if ( dist ) {
+		config.loader.source = {};
+	} else {
+		import( 'mathjax-full/components/src/source.js' ).then( source => {
+			config.loader.source = source;
+		} ).catch( err => console.error( err ) );
+	}
+	const replacements = obj2map( config.tex.replacements );
 	config.options.renderActions = {
 		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
-			actionMML( math, doc );
+			actionMML( math, doc, replacements );
 		} } ]
 	};
 	delete config.options.menuOptions;
+	delete config.tex.replacements;
 	config.startup = { document: input };
 	return config;
-}
+};
 
-const fs = require( 'fs' );
 //  Read the HTML file or stdin:
-let input = null;
-fs.readFile( argv._[0] === '-' ? 0 : argv._[0], 'utf-8', ( err, data ) => {
+fs.readFile( file === '-' ? 0 : file, 'utf-8', ( err, data ) => {
 	if ( err ) {
-		console.error( err );
+		console.error( 'Could not read file with math ' + file + ': ' + err );
 		return;
 	}
-	input = data.toString();
+	const input = data.toString();
+	const config = makeConfig( input, conf, dist );
 
-	const config = makeConfig( input, argv.conf );
-	// Load MathJax and initialize MathJax and typeset the given math
-	require( 'mathjax-full' ).init( config ).then( ( MathJax ) => {
-		const adaptor = MathJax.startup.adaptor;
-		const html = MathJax.startup.document;
-		html.render();
-		console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+	import( 'mathjax-full/es5/node-main.js' ).then( mathjax => {
+		mathjax.init( config ).then( MathJax => {
+			const adaptor = MathJax.startup.adaptor;
+			const html = MathJax.startup.document;
+			toMML = MathJax.startup.toMML;
+			html.render();
+			console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+		} ).catch( err => console.error( err ) );
 	} ).catch( err => console.error( err ) );
 } );
-
