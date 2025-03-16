@@ -35,10 +35,26 @@ class MathJax implements
 	BeforePageDisplayHook,
 	SoftwareInfoHook
 {
+	/** @const string MSGPREFIX Prefix to the extension's message codes. */
+	private const MSGPREFIX = 'mathjax';
+
 	/** @const int VERSION_TTL Number of seconds that software version is to be cached. */
 	private const VERSION_TTL = 3600; // one hour.
 
-	/** @var Engines\Base|null $engine Server-side MathJax engine. */
+	/** @const string TEXCOMMAND Regular expression for TeX command. */
+	private const TEXCOMMAND = '/(?<=\\\\)(`|\'|^|"|~|=|\.|#|$|%|&|,|:|;|>|\\\\|_|\{|\||}|[A-Za-z0-9]+)/';
+	/** @const string WIKILINK Format for commands wrapping a TeX command with a wiki link and a tooltip. */
+	private const WIKILINK = '\texttip{ \href{ %3$s }{ %1$s } }{ %2$s }';
+	/** @const string[] Formats for redefinition commands. */
+	private const DEFINITIONS = [
+		// @TODO: add macros: linked or not.
+		'\newcommand{ \%1$s }[%2$d]{ \href{ %3$s }{ %5$s } }', // -- define; page
+		'\newcommand{ \%1$s }[%2$d]{ %5$s }', // -- define; no page
+		'\let\old%1$s\%1$s \renewcommand{ \%1$s }[%2$d]{ \href{ %3$s }{ \old%1$s%4$s } }', // -- redefine; page.
+		'\let\old%1$s\%1$s \renewcommand{ \%1$s }[%2$d]{ \old%1$s%4$s }' // -- redefine; no page.
+	];
+
+	/** @var ?Engines\Base $engine Server-side MathJax engine. */
 	private static ?Engines\Base $engine = null;
 	/** @var bool $mathJaxNeeded Page has formulas. */
 	private static bool $mathJaxNeeded = false;
@@ -138,7 +154,7 @@ class MathJax implements
 	 */
 	public function onParserBeforeInternalParse( $parser, &$text, $_ ): bool {
 		$title = $parser->{ method_exists( $parser, 'getPage' ) ? 'getPage' : 'getTitle' }();
-		if ( $title ) {
+		if ( $title && $text ) {
 			$namespace = $title->getNamespace();
 			if ( $namespace >= 0 && $namespace !== NS_MEDIAWIKI ) {
 				// Screen tags, in which we expect no math:
@@ -303,7 +319,15 @@ class MathJax implements
 			$lang = $skin->getLanguage()->getCode();
 
 			// There is no need to cache this: already cached by the parser cache.
-			$out->mBodytext = self::engine()->tex2mml( $out->mBodytext, self::mjConf(), $lang );
+			global $wgmjMathJax;
+			$delims = $wgmjMathJax['tex']['displayMath'][0];
+			$used = self::usedCommands( $out->mBodytext );
+			global $wgmjAddWikilinks;
+			$html = $out->mBodytext;
+			if ( $wgmjAddWikilinks ) {
+				$html = self::definitions( $used, $delims[0], $delims[1] ) . $html;
+			}
+			$out->mBodytext = self::engine()->tex2mml( $html, self::mjConf(), $lang );
 
 			// Add scripts, styles, etc.
 			self::engine()->processPage( $out, $skin );
@@ -397,9 +421,8 @@ class MathJax implements
 	private static function texHyperlink( string $page, ?string $alias = null ): string {
 		$title = Title::newFromText( $page );
 		if ( $title ) {
-			return '\href {' . $title->getFullURL() . '}'
-				. '{ \texttip {' . ( $alias ?? $page ) . '}'
-				. '{ ' . $page . ' }}';
+			// @TODO: tell existing pages from non-existing
+			return sprintf( self::WIKILINK, $alias, $page, $title->getLocalURL() );
 		}
 		return $alias ?? $page;
 	}
@@ -462,49 +485,18 @@ class MathJax implements
 	}
 
 	/**
-	 * Return configuration for MathJax as JSON.
-	 * @return string Configuration as JSON.
-	 */
-	private static function mjConf(): string {
-		if ( !self::$mjConf ) {
-			global $wgmjMathJax;
-			if ( count( $wgmjMathJax['tex']['macros'] ?? [] ) === 0 ) {
-				$wgmjMathJax['tex']['macros'] = self::texMacros();
-			}
-			if ( count( $wgmjMathJax['tex']['replacements'] ?? [] ) === 0 ) {
-				$wgmjMathJax['tex']['replacements'] = self::texReplacements( $wgmjMathJax['tex']['macros'] );
-			}
-			try {
-				self::$mjConf = json_encode( $wgmjMathJax, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT );
-			} catch ( Exception $e ) {
-				self::$mjConf = '{}';
-			}
-		}
-		return self::$mjConf;
-	}
-
-	/**
 	 * Prepare a list of TeX macros for user's language in JavaScript format.
-	 * Also, convert linked TeX commands to macros.
-	 *
 	 * @return array An associative array of macros.
 	 */
 	private static function texMacros(): array {
+		// If TeX commands are not liked, new macros can simply be passed in MathJax confuguration.
 		$macros = [];
-		// Macros per se.
-		foreach ( preg_split( '/\s*,\s*/', wfMessage( 'mathjax-macros' )->inContentLanguage()->text() ) as $macro ) {
-			$msg = wfMessage( "mathjax-macro-$macro" )->inContentLanguage();
-			if ( $msg->exists() ) {
-				$macros[$macro] = $msg->text();
-			}
-		}
-		// Linked TeX commands.
 		global $wgmjAddWikilinks;
-		if ( $wgmjAddWikilinks ) {
-			foreach ( preg_split( '/\s*,\s*/', wfMessage( 'mathjax-pages' )->inContentLanguage()->text() ) as $link ) {
-				$page = wfMessage( "mathjax-page-$link" )->inContentLanguage();
-				if ( $macros[$link] ?? null && $page->exists() ) {
-					$macros[$link] = self::texHyperlink( $page->text(), $macros[$link] );
+		if ( !$wgmjAddWikilinks ) {
+			foreach ( self::msg2array( 'macros' ) as $code ) {
+				$macro = self::msg( 'macro', $code );
+				if ( $macro ) {
+					$macros[$code] = $macro;
 				}
 			}
 		}
@@ -512,23 +504,118 @@ class MathJax implements
 	}
 
 	/**
-	 * Prepare a list of non-macro URL injections into TeX.
-	 *
-	 * @param array $macros Already defined macros.
-	 * @return array An associative array of injections.
+	 * Return configuration for MathJax as JSON.
+	 * @return string Configuration as JSON.
 	 */
-	private static function texReplacements( array $macros ): array {
-		$replacements = [];
-		global $wgmjAddWikilinks;
-		if ( $wgmjAddWikilinks ) {
-			foreach ( preg_split( '/\s*,\s*/', wfMessage( 'mathjax-pages' )->inContentLanguage()->text() ) as $link ) {
-				$page = wfMessage( "mathjax-page-$link" )->inContentLanguage();
-				if ( !( $macros[$link] ?? null ) && $page->exists() ) {
-					$replacements[$link] = self::texHyperlink( $page->text(), '\\' . $link );
-				}
+	private static function mjConf(): string {
+		if ( !self::$mjConf ) {
+			global $wgmjMathJax;
+			try {
+				$wgmjMathJax['tex']['macros'] = self::texMacros();
+				self::$mjConf = json_encode( $wgmjMathJax, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT );
+			} catch ( Exception $_ ) {
+				self::$mjConf = '{}';
 			}
 		}
-		return $replacements;
+		return self::$mjConf;
+	}
+
+	/**
+	 * Returns a list of TeX commands that are likely to be actually used in $html.
+	 * @param string $html
+	 * @return array
+	 */
+	private static function usedCommands( string $html ): array {
+		if ( preg_match_all( self::TEXCOMMAND, $html, $commands ) ) {
+			return array_unique( $commands[0] );
+		} else {
+			return [];
+		}
+	}
+
+	/**
+	 * Splits the message with code $code into an array.
+	 * @param string $code Message code.
+	 * @return array List as an ordered array, [], if no message.
+	 */
+	private static function msg2array( string $code ): array {
+		$msg = wfMessage( self::MSGPREFIX . '-' . $code )->inContentLanguage();
+		return $msg->exists() ? preg_split( '/\s*,\s*/', $msg->text() ) : [];
+	}
+
+	/**
+	 * Return the contents of the message $prefix-$code (macro (re)definition or wikipage).
+	 * @param string $prefix
+	 * @param string $command
+	 * @return string
+	 */
+	private static function msg( string $prefix, string $command ): string {
+		$msg = wfMessage( self::MSGPREFIX . "-$prefix-$command" )->inContentLanguage();
+		return $msg->exists() ? $msg->text() : '';
+	}
+
+	/**
+	 * Returns an associative array of number of parametres indexed by TeX command.
+	 * @return array
+	 */
+	private static function noParams(): array {
+		$commands = [];
+		for ( $i = 1; $i <= 9; $i++ ) {
+			foreach ( self::msg2array( "params-$i" ) as $command ) {
+				$commands[$command] = $i;
+			}
+		}
+		return $commands;
+	}
+
+	/**
+	 * Generates a (re)definition for TeX command.
+	 * @param string $command Command name.
+	 * @param string $definition Command definition. '' for redefinition.
+	 * @param int $no_args Number of arguments that the href-wrapped standard command takes.
+	 * @param string $page Wiki page about the command. '' for none.
+	 * @return string
+	 */
+	private static function definition( string $command, string $definition, int $no_args, string $page ): string {
+		if ( !mb_check_encoding( $command, 'ASCII' ) ) {
+			return '';
+		}
+		if ( $no_args === 0 && preg_match_all( '/#\d/', $definition, $matches ) ) {
+			$no_args = count( $matches[0] );
+		}
+		$args = '';
+		for ( $i = 1; $i <= $no_args; $i++ ) {
+			$args .= "{ #$i }";
+		}
+		$format = ( $definition ? 0 : 2 ) + ( $page ? 0 : 1 );
+		$title = Title::newFromText( $page );
+		$url = $title ? $title->getLocalURL() : '';
+		return sprintf( self::DEFINITIONS[$format], $command, $no_args, $url, $args, $definition );
+	}
+
+	/**
+	 * Generate a string with all necessary definitions.
+	 * @param array $used Actually used commands.
+	 * @param string $open TeX open tag, i.e. $$.
+	 * @param string $close TeX close tag, i.e. $$.
+	 * @return string
+	 */
+	private static function definitions( array $used, string $open, string $close ): string {
+		$macros = self::msg2array( 'macros' );
+		$pages = self::msg2array( 'pages' );
+		$commands = array_intersect( $used, array_unique( array_merge( $macros, $pages ), SORT_STRING ) );
+		$params = self::noParams();
+		$definitions = array_map( static function ( string $command ) use ( $params ): string {
+			return self::definition(
+				$command,
+				self::msg( 'macro', $command ),
+				$params[$command] ?? 0,
+				self::msg( 'page', $command )
+			);
+		}, $commands );
+		return '<div id="definitions" style="display: none">' . $open
+			. implode( "\n", $definitions )
+			. $close . '</div>';
 	}
 
 	/**

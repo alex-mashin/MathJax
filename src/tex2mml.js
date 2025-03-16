@@ -26,86 +26,81 @@
  */
 
 //  Get the command-line arguments
-const argv = require( 'yargs' )
-	.demand( 0 ).strict()
-	.usage( '$0 [options] "math"' )
-	.options( {
-		dist: {
-			'boolean': true,
-			'default': false,
-			describe: 'true to use webpacked version, false to use MathJax source files'
-		},
-		conf: {
-			describe: 'Path to JSON file containing TeX configuration'
-		}
-	} )
-	.argv;
-
-/**
- * Cast object into a Map.
- */
-const obj2map = ( obj ) => {
-	let map = new Map();
-	for ( const key in obj ) {
-		if ( obj.hasOwnProperty( key ) ) {
-			map.set( new RegExp( '\\\\' + key, 'g' ), obj[key] );
-		}
-	}
-	return map;
-};
-
-/**
- * Mass replacement in a string.
- */
-String.prototype.massReplace = function( map ) {
-	let replaced = this;
-	for ( const [search, replace] of map ) {
-		replaced = replaced.replace (search, replace);
-	}
-	return replaced;
-};
+import { Command } from 'commander';
+const program = new Command();
+program
+	.name( 'tex2mml')
+	.description( 'Convert all TeX formulæ in HTML to MathML using MathJax' )
+	.version( '3.1' )
+	.argument( '<string>', 'file name to process or "-" to use standard input' )
+	.option( '--dist <path>', 'path to MathJax distribution' )
+	.option( '--conf <confguration>', 'MathJax configuration' )
+	.parse();
+const { dist, conf } = program.opts();
+const file = program.args[0];
 
 /*
  * A renderAction to take the place of typesetting.
  *	It renders the output to MathML instead.
  */
-const actionMML = ( math, doc, replacements ) => {
+
+let toMML = null;
+
+//  A renderAction to take the place of typesetting.
+//  It renders the output to MathML instead.
+const actionMML = ( math, doc ) => {
 	const adaptor = doc.adaptor;
-	const original = math.math.replace(/&/g, '&#38;');
-	const replaced = math.math.massReplace( replacements );
 	const mml = MathJax.startup
-		.toMML( replaced )
-		// Inject TeX annotations:
+		.toMML( math.root )
 		.replace(
 			/^<math(.+?)>(.+?)<\/math>$/su,
 			'<math$1>\n<semantics><mrow>$2</mrow>' +
 			'\n<annotation encoding="application/x-tex">' +
-			original +
+			math.math.replace(/&/g, '&#38;') +
 			'</annotation>\n</semantics>\n</math>'
 		);
 	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
 };
 
+import * as fs from 'fs';
+
 /*
  * Extract configuration:
  */
-const makeConfig = ( input, conf ) => {
+const makeConfig = ( input, conf, dist ) => {
 	// Extract TeX configuration:
 	const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+?)<\s*\/script\s*>(.*)$/s.exec( input );
 	let config = null;
 	if ( parsed ) {
+		// Extract configuration from the input file:
 		config = JSON.parse( parsed[1] );
 		input = parsed[2];
 	} else {
 		// Read the configuration file:
-		config = JSON.parse( fs.readFileSync( conf, 'utf8' ) );
+		fs.readFile( conf, 'utf-8', ( err, data ) => {
+			if ( err ) {
+				console.error( 'Could not read configuration file ' + conf + ': ' + err );
+				return;
+			}
+			config = JSON.parse( data );
+		} );
 	}
-	config.loader.load = [ 'input/tex-full', 'adaptors/liteDOM' ];
-	config.loader.source = argv.dist ? {} : require( 'mathjax-full/components/src/source.js' ).source;
-	const replacements = obj2map( config.replacements );
+	const ui = config.loader.load.indexOf( 'ui/safe' );
+	if ( ui > -1 ) {
+		config.loader.load.splice( ui, 1 );
+		config.loader.load.push( 'adaptors/liteDOM' );
+	}
+	if ( dist ) {
+		config.loader.source = {};
+	} else {
+		import( 'mathjax-full/components/src/source.js' ).then( source => {
+			config.loader.source = source;
+		} ).catch( err => console.error( err ) );
+	}
 	config.options.renderActions = {
 		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
-			actionMML( math, doc, replacements );
+			// @TODO: SVG for bussproofs.
+			actionMML( math, doc );
 		} } ]
 	};
 	delete config.options.menuOptions;
@@ -113,24 +108,22 @@ const makeConfig = ( input, conf ) => {
 	return config;
 };
 
-const fs = require( 'fs' );
 //  Read the HTML file or stdin:
-let input = null;
-fs.readFile( argv._[0] === '-' ? 0 : argv._[0], 'utf-8', ( err, data ) => {
+fs.readFile( file === '-' ? 0 : file, 'utf-8', ( err, data ) => {
 	if ( err ) {
-		console.error( err );
+		console.error( 'Could not read file with math ' + file + ': ' + err );
 		return;
 	}
-	input = data.toString();
+	const input = data.toString();
+	const config = makeConfig( input, conf, dist );
 
-	const config = makeConfig( input, argv.conf );
-
-	// Load MathJax and initialize MathJax and typeset the given math
-	require( 'mathjax-full' ).init( config ).then( ( MathJax ) => {
-		const adaptor = MathJax.startup.adaptor;
-		const html = MathJax.startup.document;
-		html.render();
-		console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+	import( 'mathjax-full/es5/node-main.js' ).then( mathjax => {
+		mathjax.init( config ).then( async MathJax => {
+			const adaptor = MathJax.startup.adaptor;
+			const html = MathJax.startup.document;
+			toMML = MathJax.startup.toMML;
+			await MathJax._.mathjax.mathjax.handleRetriesFor( () => html.render() );
+			console.log( adaptor.outerHTML( adaptor.root( html.document ) ) );
+		} ).catch( err => console.error( err ) );
 	} ).catch( err => console.error( err ) );
 } );
-

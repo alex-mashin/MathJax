@@ -26,12 +26,12 @@ services:
       context: ./services/cgi # -- wherever the enclosed Dockerfile is installed.
       args:
         APK: coreutils
-        NODE_GLOBAL: esm
-        NODE: yargs mathjax-full
+        NODE: commander mathjax-full
         BINARY: https://raw.githubusercontent.com/alex-mashin/MathJax/master/src/tex2mml.js
         WGET: https://raw.githubusercontent.com/alex-mashin/MathJax/master/assets/config.fixed.json
         COMMAND: >-
-          /usr/bin/node --stack-size=1024 --stack-trace-limit=1000 -r /usr/local/lib/node_modules/esm
+          /usr/bin/node --experimental-default-type=module
+          --stack-size=1024 --stack-trace-limit=1000
           /usr/local/bin/tex2mml.js - --conf=/usr/share/downloads/config.fixed.json --dist=1
         VERSION_COMMAND: >-
           VERSION=$$( /usr/bin/npm list -lp --prefix /usr/local/bin mathjax-full ) &&

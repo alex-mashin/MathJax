@@ -6,7 +6,7 @@
 		"based on a work by Mithgol the Webmaster"
 	],
 	"type": "parserhook",
-	"version": "3.0",
+	"version": "3.1",
 	"descriptionmsg": "mathjax-desc",
 	"url": "https://traditio.wiki/MathJax_for_MediaWiki",
 	"requires": {
@@ -94,7 +94,7 @@
 		"MathJax": {
 			"value": {
 				"loader": {
-					"load": [ "ui/safe", "input/tex-full" ]
+					"load": [ "input/tex-full", "ui/safe", "[tex]/tagformat" ]
 				},
 				"options": {
 					"skipHtmlTags": [
@@ -128,7 +128,26 @@
 					}
 				},
 				"tex": {
-					"packages": [ "base", "autoload", "ams", "newcommand", "require", "configmacros" ],
+					"packages": [
+						"ams",
+						"amscd",
+						"autoload",
+						"base",
+						"centernot",
+						"colortbl",
+						"configmacros",
+						"empheq",
+						"gensymb",
+						"mathtools",
+						"newcommand",
+						"physics",
+						"require",
+						"tagformat",
+						"textcomp",
+						"textmacros",
+						"upgreek",
+						"verb"
+					],
 					"inlineMath": [
 						[ "\\(", "\\)" ]
 					],

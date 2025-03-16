@@ -1,14 +1,12 @@
 {
 	"name": "MathJax for MediaWiki",
 	"description": "A MediaWiki extension that renderes formulæ with MathJax",
-	"version": "2.0",
+	"version": "3.1",
 	"scripts": {
 		"test": "grunt test"
 	},
 	"dependencies": {
-		"mathjax-full": "*",
-		"esm": "*",
-		"yargs": "*"
+		"mathjax-full": "*"
 	},
 	"devDependencies": {
 		"eslint-config-wikimedia": "0.20.0",

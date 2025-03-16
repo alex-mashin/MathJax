@@ -27,9 +27,11 @@ class Service extends Base {
 		try {
 			$status = $req->execute();
 		} catch ( Exception $e ) {
-			$error = '<span class="error">'
-				. wfMessage( 'mathjax-service-unavailable', $url, $e->getMessage() )->inContentLanguage()->text()
-				. '</span>';
+			$error = '<span class="error">' . wfMessage(
+				'mathjax-service-unavailable',
+				'(url skipped)',
+				$e->getMessage()
+			)->inContentLanguage()->text() . '</span>';
 			return $error . $html;
 		}
 
@@ -39,7 +41,7 @@ class Service extends Base {
 
 		$error = '<span class="error">' . wfMessage(
 				'mathjax-broken-tex',
-				(string)$status . '<br />' . $req->getContent()
+				strtr( $status . '<br />' . $req->getContent(), [ $url => '(url skipped)' ] )
 			)->inContentLanguage()->text() . '</span>';
 		return $error . $html;
 	}
