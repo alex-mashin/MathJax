@@ -104,6 +104,7 @@ const makeConfig = ( input, conf, dist ) => {
 		} } ]
 	};
 	delete config.options.menuOptions;
+	delete config.tex.replacements;
 	config.startup = { document: input };
 	return config;
 };
