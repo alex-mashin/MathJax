@@ -58,7 +58,7 @@
 	"mathjax-macro-arth": "\\operatorname{ artanh }",
 	"mathjax-macro-ch": "\\operatorname{ cosh }",
 	"mathjax-macro-clubs": "\\clubsuit",
-	"mathjax-macro-ctg": "\\operatorname{ const }",
+	"mathjax-macro-const": "\\operatorname{ const }",	
 	"mathjax-macro-coppa": "\\mbox{\\unicode{x03D9}}",
 	"mathjax-macro-ctg": "\\operatorname{ cot }",
 	"mathjax-macro-cth": "\\operatorname{ cotanh }",
