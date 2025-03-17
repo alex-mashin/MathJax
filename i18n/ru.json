@@ -3,7 +3,7 @@
 	"mathjax-broken-tex": "Не удалось преобразовать TeX в MML с помощью серверного MathJax: ошибка: <pre>$1</pre>",
 	"mathjax-service-unavailable": "Не удалось подключиться к сервису MathJax ($1): <pre>$2</pre>",
 
-	"mathjax-macros": "AA, Alpha, Beta, C, Chi, Coppa, D, Epsilon, Eta, F, H, Hom, Ind, Iota, J, Kappa, Koppa, Larr, Mu, N, Nu, O, Omicron, P, Q, R, Rarr, Rho, Sampi, Stigma, Tau, Wr, Wr, Ypsilon, Z, Zeta, acos, acosecant, acosine, acot, acotangent, acsc, and, arccosec, arccot, arccotangent, arccsc, arcctg, arcctg, arch, arch, arcos, arcosh, arcosine, arcotanh, arcsch, arcsec, arctan, arctangent, arctg, arctg, arcth, arcth, arsech, arsh, arsh, arsinh, artanh, arth, arth, asec, asecant, asin, asine, atan, atangent, ch, ch, clubs, coppa, cosec, cosecant, cosh, cot, cotangent, cotanh, coth, csc, csch, ctg, ctg, cth, cth, del, diag, diamonds, empty, euro, fint, hearts, helm, hypcosecant, hypcosine, hypcotangent, hypsecant, hypsine, hyptangent, ind, intBar, intbar, intcap, intclockwise, intcup, koppa, larr, lowint, oiiint, oiint, ointclockwise, ointctrclockwise, or, ord, qall, qand, qas, qassume, qcc, qelse, qeven, qfor, qgiven, qif, qin, qinteger, qlet, qodd, qor, qotherwise, qsince, qthen, qunless, qusing, rarr, rot, sampi, secant, sech, sgn, sh, sign, sinh, spades, sqint, stigma, sub, sube, supe, surfintegral, tan, tangent, tanh, textvisiblespace, tg, tg, th, th, thetasym, upint, varoiiint, varoiint, varointclockwise, varointctrclockwise, vline, volintegral, weierp, ypsilon",
+	"mathjax-macros": "AA, Alpha, Beta, C, Chi, Coppa, D, Epsilon, Eta, F, H, Hom, Ind, Iota, J, Kappa, Koppa, Larr, Mu, N, Nu, O, Omicron, P, Q, R, Rarr, Rho, Sampi, Stigma, Tau, Wr, Wr, Ypsilon, Z, Zeta, acos, acosecant, acosine, acot, acotangent, acsc, and, arccosec, arccot, arccotangent, arccsc, arcctg, arcctg, arch, arch, arcos, arcosh, arcosine, arcotanh, arcsch, arcsec, arctan, arctangent, arctg, arctg, arcth, arcth, arsech, arsh, arsh, arsinh, artanh, arth, arth, asec, asecant, asin, asine, atan, atangent, ch, ch, clubs, coppa, cosec, cosecant, cosh, cot, cotangent, cotanh, coth, csc, csch, ctg, ctg, cth, cth, dalembert, del, diag, diamonds, empty, euro, fint, hearts, helm, hypcosecant, hypcosine, hypcotangent, hypsecant, hypsine, hyptangent, ind, intBar, intbar, intcap, intclockwise, intcup, koppa, larr, lowint, oiiint, oiint, ointclockwise, ointctrclockwise, or, ord, qall, qand, qas, qassume, qcc, qelse, qeven, qfor, qgiven, qif, qin, qinteger, qlet, qodd, qor, qotherwise, qsince, qthen, qunless, qusing, rarr, rot, sampi, secant, sech, sgn, sh, sign, sinh, spades, sqint, stigma, sub, sube, supe, surfintegral, tan, tangent, tanh, textvisiblespace, tg, tg, th, th, thetasym, upint, varoiiint, varoiint, varointclockwise, varointctrclockwise, vline, volintegral, weierp, ypsilon",
 
 	"mathjax-macro-acos": "\\operatorname{ arccos }",
 	"mathjax-macro-acosecant": "\\operatorname{ arccosec }",
@@ -186,6 +186,7 @@
 	"mathjax-page-cth": "Гиперболический котангенс",
 	"mathjax-page-cup": "Объединение множеств",
 	"mathjax-page-curl": "Ротор (дифференциальный оператор)",
+	"mathjax-page-dalembert": "Оператор Д'Аламбера",
 	"mathjax-page-dbinom": "Биномиальный коэффициент",
 	"mathjax-page-dd": "Дифференциал",
 	"mathjax-page-ddddot": "Четвёртая производная",
@@ -279,6 +280,7 @@
 	"mathjax-page-nabla": "Оператор набла",
 	"mathjax-page-naturallogarithm": "Натуральный логарифм",
 	"mathjax-page-ncong": "Конгруентность",
+	"mathjax-page-neg": "Отрицание",	
 	"mathjax-page-nexists": "Квантор существования",
 	"mathjax-page-ni": "Принадлежность множеству",
 	"mathjax-page-notin": "Принадлежность множеству",
