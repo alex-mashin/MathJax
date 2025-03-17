@@ -379,6 +379,7 @@
 	"mathjax-page-varinjlim": "Индуктивный предел",
 	"mathjax-page-varliminf": "Нижний предел",
 	"mathjax-page-varlimsup": "Верхний предел",
+	"mathjax-page-varnothing": "Пустое множество",
 	"mathjax-page-varoiiint": "Интеграл по объёму",
 	"mathjax-page-varoiint": "Интеграл по поверхности",
 	"mathjax-page-varointclockwise": "Интеграл по контуру с правым обходом",
