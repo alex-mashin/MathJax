@@ -11,7 +11,7 @@
 
 	"mathjax-environments": "align, align*, alignat, alignat*, aligned, alignedat, array, Bmatrix, bmatrix, cases, CD, eqnarray, eqnarray*, equation, equation*, gather, gather*, gathered, matrix, multline, multline*, pmatrix, smallmatrix, split, subarray, Vmatrix, vmatrix",
 
-	"mathjax-macros": "AA, Alpha, Beta, C, Chi, Coppa, D, Epsilon, Eta, F, H, Hom, Ind, Iota, J, Kappa, Koppa, Larr, Mu, N, Nu, O, Omicron, P, Q, R, Rarr, Rho, Sampi, Stigma, Tau, Wr, Ypsilon, Z, Zeta, and, arcctg, arch, arctg, arcth, arsh, arth, ch, clubs, coppa, ctg, cth, del, diamonds, empty, euro, fint, hearts, helm, ind, intBar, intbar, intcap, intclockwise, intcup, koppa, larr, lowint, oiiint, oiint, ointclockwise, ointctrclockwise, or, rarr, rot, sampi, sh, sign, spades, sqint, stigma, sub, sube, supe, surfintegral, textvisiblespace, tg, th, thetasym, upint, varoiiint, varoiint, varointclockwise, varointctrclockwise, vline, volintegral, weierp, ypsilon",
+	"mathjax-macros": "AA, Alpha, Beta, C, Chi, Coppa, D, Epsilon, Eta, F, H, Hom, Ind, Iota, J, Kappa, Koppa, Larr, Mu, N, Nu, O, Omicron, P, Q, R, Rarr, Rho, Sampi, Stigma, Tau, Wr, Ypsilon, Z, Zeta, and, arcctg, arch, arctg, arcth, arsh, arth, ch, clubs, coppa, ctg, cth, del, diamonds, empty, euro, fint, hearts, helm, ind, intBar, intbar, intcap, intclockwise, intcup, koppa, larr, lowint, oiiint, oiint, ointclockwise, ointctrclockwise, or, ord, rarr, rot, sampi, sh, sign, spades, sqint, stigma, sub, sube, supe, surfintegral, textvisiblespace, tg, th, thetasym, upint, varoiiint, varoiint, varointclockwise, varointctrclockwise, vline, volintegral, weierp, ypsilon",
 
 	"mathjax-macro-AA": "\\mbox{\\unicode{x00C5}}",
 	"mathjax-macro-Alpha": "\\mbox{\\unicode{x0391}}",
@@ -84,6 +84,7 @@
 	"mathjax-macro-ointclockwise": "\\operatorname*{ \\huge\\unicode{x2232} }",
 	"mathjax-macro-ointctrclockwise": "\\operatorname*{ \\huge\\unicode{x2233} }",
 	"mathjax-macro-or": "\\lor",
+	"mathjax-macro-ord": "\\operatorname{ ord }",	
 	"mathjax-macro-rarr": "\\rightarrow",
 	"mathjax-macro-rot": "\\curl",
 	"mathjax-macro-sampi": "\\mbox{\\unicode{x03E1}}",
