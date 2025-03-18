@@ -107,7 +107,7 @@ fs.readFile( file === '-' ? 0 : file, 'utf-8', ( err, data ) => {
 		return;
 	}
 	const input = data.toString();
-	const config = makeConfig( input, conf, dist );
+	const config = makeConfig( input, dist );
 
 	import( 'mathjax-full/es5/node-main.js' ).then( mathjax => {
 		mathjax.init( config ).then( async MathJax => {
