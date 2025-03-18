@@ -32,7 +32,7 @@ services:
         COMMAND: >-
           /usr/bin/node --experimental-default-type=module
           --stack-size=1024 --stack-trace-limit=1000
-          /usr/local/bin/tex2mml.js - --conf=/usr/share/downloads/config.fixed.json --dist=1
+          /usr/local/bin/tex2mml.js - --dist=1
         VERSION_COMMAND: >-
           VERSION=$$( /usr/bin/npm list -lp --prefix /usr/local/bin mathjax-full ) &&
           echo $${VERSION#*:}

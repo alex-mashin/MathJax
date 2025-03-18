@@ -34,21 +34,19 @@ program
 	.version( '3.1' )
 	.argument( '<string>', 'file name to process or "-" to use standard input' )
 	.option( '--dist <path>', 'path to MathJax distribution' )
-	.option( '--conf <confguration>', 'MathJax configuration' )
 	.parse();
-const { dist, conf } = program.opts();
+const { dist } = program.opts();
 const file = program.args[0];
 
 /*
  * A renderAction to take the place of typesetting.
  *	It renders the output to MathML instead.
  */
-
 let toMML = null;
 
 //  A renderAction to take the place of typesetting.
 //  It renders the output to MathML instead.
-const actionMML = ( math, doc ) => {
+function actionMML( math, doc ) {
 	const adaptor = doc.adaptor;
 	const mml = MathJax.startup
 		.toMML( math.root )
@@ -60,14 +58,15 @@ const actionMML = ( math, doc ) => {
 			'</annotation>\n</semantics>\n</math>'
 		);
 	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
-};
+}
 
 import * as fs from 'fs';
 
 /*
  * Extract configuration:
  */
-const makeConfig = ( input, conf, dist ) => {
+import defaultConfig from '/usr/share/downloads/config.fixed.json' with { type: 'json' };
+const makeConfig = ( input, dist ) => {
 	// Extract TeX configuration:
 	const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+?)<\s*\/script\s*>(.*)$/s.exec( input );
 	let config = null;
@@ -77,13 +76,7 @@ const makeConfig = ( input, conf, dist ) => {
 		input = parsed[2];
 	} else {
 		// Read the configuration file:
-		fs.readFile( conf, 'utf-8', ( err, data ) => {
-			if ( err ) {
-				console.error( 'Could not read configuration file ' + conf + ': ' + err );
-				return;
-			}
-			config = JSON.parse( data );
-		} );
+		config = defaultConfig;
 	}
 	const ui = config.loader.load.indexOf( 'ui/safe' );
 	if ( ui > -1 ) {
@@ -99,12 +92,10 @@ const makeConfig = ( input, conf, dist ) => {
 	}
 	config.options.renderActions = {
 		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
-			// @TODO: SVG for bussproofs.
 			actionMML( math, doc );
 		} } ]
 	};
 	delete config.options.menuOptions;
-	delete config.tex.replacements;
 	config.startup = { document: input };
 	return config;
 };
