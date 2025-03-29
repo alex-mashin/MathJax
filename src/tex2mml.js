@@ -31,21 +31,18 @@ const program = new Command();
 program
 	.name( 'tex2mml')
 	.description( 'Convert all TeX formulæ in HTML to MathML using MathJax' )
-	.version( '3.1' )
-	.argument( '<string>', 'file name to process or "-" to use standard input' )
-	.option( '--dist <path>', 'path to MathJax distribution' )
+	.argument( '[string]', 'file name to process or "-" to use standard input (default)', '-' )
+	.option( '--conf <path>', 'path to MathJax comfiguration', '/usr/share/downloads/config.fixed.json' )
+	.option( '-V, --version', 'only print MathJax version' )
 	.parse();
-const { dist } = program.opts();
-const file = program.args[0];
+const { conf, version } = program.opts();
+const file = program.args[0] || '-';
 
 /*
  * A renderAction to take the place of typesetting.
  *	It renders the output to MathML instead.
  */
 let toMML = null;
-
-//  A renderAction to take the place of typesetting.
-//  It renders the output to MathML instead.
 function actionMML( math, doc ) {
 	const adaptor = doc.adaptor;
 	const mml = MathJax.startup
@@ -65,8 +62,16 @@ import * as fs from 'fs';
 /*
  * Extract configuration:
  */
-import defaultConfig from '/usr/share/downloads/config.fixed.json' with { type: 'json' };
-const makeConfig = ( input, dist ) => {
+const defaultConfig = path => {
+	try {
+		const data = fs.readFileSync( path, 'utf8' );
+		return JSON.parse( data );
+	} catch ( err ) {
+		console.error( 'Could not read MathJax configuration at ' + path );
+	}
+};
+
+const makeConfig = input => {
 	// Extract TeX configuration:
 	const parsed = /^\s*<script\s+type\s*=\s*"text\/json"\s*>(.+?)<\s*\/script\s*>(.*)$/s.exec( input );
 	let config = null;
@@ -76,20 +81,14 @@ const makeConfig = ( input, dist ) => {
 		input = parsed[2];
 	} else {
 		// Read the configuration file:
-		config = defaultConfig;
+		config = defaultConfig( conf );
 	}
 	const ui = config.loader.load.indexOf( 'ui/safe' );
 	if ( ui > -1 ) {
 		config.loader.load.splice( ui, 1 );
 		config.loader.load.push( 'adaptors/liteDOM' );
 	}
-	if ( dist ) {
-		config.loader.source = {};
-	} else {
-		import( 'mathjax-full/components/src/source.js' ).then( source => {
-			config.loader.source = source;
-		} ).catch( err => console.error( err ) );
-	}
+	config.loader.source = {};
 	config.options.renderActions = {
 		typeset: [ 150, ( doc ) => { for ( const math of doc.math ) {
 			actionMML( math, doc );
@@ -107,10 +106,14 @@ fs.readFile( file === '-' ? 0 : file, 'utf-8', ( err, data ) => {
 		return;
 	}
 	const input = data.toString();
-	const config = makeConfig( input, dist );
+	const config = makeConfig( input );
 
 	import( 'mathjax-full/es5/node-main.js' ).then( mathjax => {
 		mathjax.init( config ).then( async MathJax => {
+			if ( version ) {
+				console.log ( MathJax.version );
+				process.exit();
+			}
 			const adaptor = MathJax.startup.adaptor;
 			const html = MathJax.startup.document;
 			toMML = MathJax.startup.toMML;

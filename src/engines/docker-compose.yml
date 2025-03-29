@@ -32,10 +32,10 @@ services:
         COMMAND: >-
           /usr/bin/node --experimental-default-type=module
           --stack-size=1024 --stack-trace-limit=1000
-          /usr/local/bin/tex2mml.js - --dist=1
+          /usr/local/bin/tex2mml.js -
         VERSION_COMMAND: >-
-          VERSION=$$( /usr/bin/npm list -lp --prefix /usr/local/bin mathjax-full ) &&
-          echo $${VERSION#*:}
+          /usr/bin/node --experimental-default-type=module
+          /usr/local/bin/tex2mml.js -V
         CONTENT_TYPE: text/mathml
     environment:
       ERRORS: FATAL

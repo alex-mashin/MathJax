@@ -489,7 +489,7 @@ class MathJax implements
 	 * @return array An associative array of macros.
 	 */
 	private static function texMacros(): array {
-		// If TeX commands are not liked, new macros can simply be passed in MathJax confuguration.
+		// If TeX commands are not linked, new macros can simply be passed in MathJax configuration.
 		$macros = [];
 		global $wgmjAddWikilinks;
 		if ( !$wgmjAddWikilinks ) {

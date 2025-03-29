@@ -17,19 +17,23 @@ ARG NODE
 ARG NODE_GLOBAL
 RUN <<-NODEJS
 	set -ex && \
+	NODE_BUILD='npm g++ make' && \
 	if [ ! -z "$NODE" ] || [ ! -z "$NODE_GLOBAL" ]; then \
-		apk add --no-cache npm && \
+		apk add --no-cache nodejs $NODE_BUILD && \
 		cd /usr/local/bin && \
 		npm init --yes; \
 	fi && \
 	if [ ! -z "$NODE_GLOBAL" ]; then \
-		npm install -g $NODE_GLOBAL; \
+		npm install -g npm $NODE_GLOBAL; \
 	fi &&
 	if [ ! -z "$NODE" ]; then \
 		npm install $NODE; \
-	fi &&
+	fi && \
 	if [ -d /usr/local/bin/node_modules/puppeteer ]; then \
 		echo '{ "headless": 1, "timeout": 30000, "executablePath": "/usr/bin/chromium", "args": [ "--no-sandbox", "--disable-gpu" ] }' > /usr/local/bin/.puppeteerrc.json; \
+	fi && \
+	if [ ! -z "$NODE" ] || [ ! -z "$NODE_GLOBAL" ]; then \
+		apk del $NODE_BUILD; \
 	fi
 NODEJS
 
@@ -332,13 +336,21 @@ ARG VERSION_COMMAND
 COPY --chmod=777 <<-VERSION /www/cgi-bin/version.sh
 	#!/bin/sh
 	set -eu
+	# This is to reliably escape any quotes:
+	COMMAND=$( cat <<-'SCMD'
+		$COMMAND
+	SCMD
+	)
+	VERSION_COMMAND=$( cat <<-'VCMD'
+		$VERSION_COMMAND
+	VCMD
+	)
 	echo 'Content-type: text/plain; charset=UTF-8'
 	echo 'Status: 200 OK'
 	echo ''
-	if [ ! -z '$VERSION_COMMAND' ]; then
-		VC='$VERSION_COMMAND'
+	if [ ! -z "\$VERSION_COMMAND" ]; then
+		VC="\$VERSION_COMMAND"
 	else
-		COMMAND='$COMMAND'
 		VC="\${COMMAND%% *} --version || \${COMMAND%% *} -v || \${COMMAND%% *} -V"
 	fi
 	eval "\$VC" 2>&1 # Some programs, e.g., graphviz, print version info to stderr out of principle.
