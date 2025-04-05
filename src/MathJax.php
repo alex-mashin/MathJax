@@ -403,7 +403,7 @@ class MathJax implements
 			// \href{...}, [[...]]
 			[ '/\\href\s*\{(?!http)(.+?)}\s*\{(.+?)}/ui', '/\[\[(.+?)(?:\|(.*?))?]]/ui' ],
 			function ( array $matches ): string {
-				return self::texHyperlink( $matches[1], $matches[2] );
+				return self::texHyperlink( $matches[1], $matches[2] ?? null );
 			},
 			$wikified
 		) );

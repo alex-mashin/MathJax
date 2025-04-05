@@ -54,7 +54,17 @@ function actionMML( math, doc ) {
 			math.math.replace(/&/g, '&#38;') +
 			'</annotation>\n</semantics>\n</math>'
 		);
-	math.typesetRoot = adaptor.firstChild( adaptor.body( adaptor.parse( mml, 'text/html' ) ) );
+	const emsg = '<math xmlns="http://www.w3.org/1998/Math/MathML"><mtext>Could not parse TeX.</mtext></math>';
+	let parsed;
+	try {
+		parsed = adaptor.parse( mml, 'text/html' );
+	} catch ( e ) {
+		parsed = adaptor.parse( emsg );
+	}
+	if ( typeof parsed === 'undefined' ) {
+		parsed = adaptor.parse( emsg );
+	}
+	math.typesetRoot = adaptor.firstChild( adaptor.body( parsed ) );
 }
 
 import * as fs from 'fs';
