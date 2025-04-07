@@ -50,7 +50,7 @@ build the image, set up the _MathJax_ container and have it connected to
 your _MediaWiki_ installation as described in the `src/engines/docker-compose.yml` file.
 Set `$wgmjServiceUrl` to the URL of the container, as connectable from
 _MediaWiki_. You might change the default values of `$wgmjServiceExternalUrl`
-and `$wgnjServiceVersionUrl`, too.
+and `$wgmjServiceVersionUrl`, too.
 
 ## Further information
 For further information, see https://traditio.wiki/MathJax_for_MediaWiki.
