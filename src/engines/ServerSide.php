@@ -23,13 +23,13 @@ class ServerSide extends Base {
 		}
 
 		$command = 'node --stack-size=1024 --stack-trace-limit=1000 -r esm '
-			. __DIR__ . '/../tex2mml.js --conf=' . $conf_file . ' --dist=1';
+			. __DIR__ . '/../tex2mml.mjs --conf=' . $conf_file . ' --dist=1';
 		$shell = Shell::command( explode( ' ', $command ) ) // Shell class demands an array of words.
 			->environment( [ 'NODE_PATH' => __DIR__ . '/../../node_modules' ] ) // MathJax installed locally.
 			->limits( [ 'memory' => 0, 'time' => 0, 'filesize' => 0 ] );
 		$html_file = null;
 		if ( strlen( $html ) >= 65536 /* hardcoded in Command::execute() */ ) {
-			// Create a temporary HTML file and pass its name to tex2mml.js:
+			// Create a temporary HTML file and pass its name to tex2mml.mjs:
 			$html_file = sys_get_temp_dir() . '/tex_' . md5( $html );
 			if ( !file_exists( $html_file ) ) {
 				file_put_contents( $html_file, $html );
