@@ -30,12 +30,9 @@ services:
         BINARY: https://raw.githubusercontent.com/alex-mashin/MathJax/master/src/tex2mml.mjs
         WGET: https://raw.githubusercontent.com/alex-mashin/MathJax/master/assets/config.fixed.json
         COMMAND: >-
-          /usr/bin/node --experimental-default-type=module
-          --stack-size=1024 --stack-trace-limit=1000
+          /usr/bin/node --stack-size=1024 --stack-trace-limit=1000
           /usr/local/bin/tex2mml.mjs -
-        VERSION_COMMAND: >-
-          /usr/bin/node --experimental-default-type=module
-          /usr/local/bin/tex2mml.mjs -V
+        VERSION_COMMAND: /usr/bin/node /usr/local/bin/tex2mml.mjs -V
         CONTENT_TYPE: text/mathml
     environment:
       ERRORS: FATAL
