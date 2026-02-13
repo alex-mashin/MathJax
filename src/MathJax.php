@@ -107,17 +107,14 @@ class MathJax implements
 		];
 		global $wgmjMathJax;
 		$tex = $wgmjMathJax['tex'];
-		self::$mathRegex = '/('
-			. preg_quote( $tex['inlineMath'][0][0], '/' )
-			. '.+?'
-			. preg_quote( $tex['inlineMath'][0][1], '/' )
-			. '|'
-			. preg_quote( $tex['displayMath'][0][0], '/' )
-			. '.+?'
-			. preg_quote( $tex['displayMath'][0][1], '/' )
-			. '|'
-			. "<($tag)"
-			. ')/';
+		$options = [];
+		foreach ( [ 'displayMath', 'inlineMath' ] as $mode ) {
+			foreach ( $tex[$mode] as [ $open, $close ] ) {
+				$options[] = preg_quote( $open, '/' ) . '.+?' . preg_quote( $close, '/' );
+			}
+		}
+		$options[] = "<($tag)";
+		self::$mathRegex = '/(' . implode( '|', $options ) . ')/';
 		// Regex to screen tags that cannot contain maths:
 		$any_tag = implode( '|', $wgmjMathJax['options']['skipHtmlTags'] );
 		// Should deal with nested tags correctly:
