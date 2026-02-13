@@ -63,16 +63,12 @@
 			"verb"
 		],
 		"inlineMath": [
-			[
-				"\\(",
-				"\\)"
-			]
+			[ "\\(", "\\)" ],
+			[ "$", "$" ]
 		],
 		"displayMath": [
-			[
-				"$$",
-				"$$"
-			]
+			[ "$$", "$$" ],
+			[ "\\[", "\\]" ]
 		],
 		"processEnvironments": true,
 		"processRefs": true,
