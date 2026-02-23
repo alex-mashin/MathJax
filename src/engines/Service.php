@@ -15,13 +15,14 @@ class Service extends Base {
 	 * @inheritDoc
 	 */
 	public function tex2mml( string $html, string $config, string $lang ): string {
-		global $wgmjServiceUrl;
+		global $wgmjServiceUrl, $wgmjServiceTimeout;
 		$url = "$wgmjServiceUrl?config=yes&display=inline&lang=$lang";
 		// Create an HTTP request object.
 		$factory = MediaWikiServices::getInstance()->getHttpRequestFactory();
 		$req = $factory->create( $url, [
 			'method' => 'POST',
-			'postData' => "<script type=\"text/json\">$config</script>$html"
+			'postData' => "<script type=\"text/json\">$config</script>$html",
+			'timeout' => $wgmjServiceTimeout
 		] );
 
 		try {

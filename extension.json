@@ -87,6 +87,10 @@
 			"value": "/js/mathjax",
 			"description": "Relative URL of the remote or containerised MathJax service as served by the frontend."
 		},
+		"ServiceTimeout": {
+			"value": 60,
+			"description": "Timeout of MathJax service."
+		},
 		"ServiceVersionUrl": {
 			"value": "http://mathjax/cgi-bin/version.sh",
 			"description": "URL that serves remote MathJax version"
@@ -149,8 +153,7 @@
 						"verb"
 					],
 					"inlineMath": [
-						[ "\\(", "\\)" ],
-						[ "$", "$" ]
+						[ "\\(", "\\)" ]
 					],
 					"displayMath": [
 						[ "$$", "$$" ],
